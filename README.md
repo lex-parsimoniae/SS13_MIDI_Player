@@ -1,4 +1,4 @@
-# Goonstation Instrument MIDI converter
+# SS13 MIDI Player
 
 ![Goonstation Instruments](https://github.com/E-Y-M/Goonstation_Instrument_Player/blob/main/app/Goonstation_Instrument_Player/www/img/instruments.png)
 
