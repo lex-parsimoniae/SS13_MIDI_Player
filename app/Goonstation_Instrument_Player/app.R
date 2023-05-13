@@ -20,12 +20,13 @@ suppressPackageStartupMessages({
   #library(png)
   #library(ggpubr)
   #library(grid)
-  #library(rclipboard)
+  library(rclipboard)
   #library(DT)
   #library(DescTools)
   #library(webexercises)
   library(zoo)
   library(tuneR)
+  library(DT)
 })
 
 # user interface ----
@@ -47,15 +48,7 @@ intro_tab <- tabItem(
       tags$br(),
       tags$br(),
       tags$p("Because pynput doesn't support some of the keys used in the default keybindings, you will need to use custom keybinds. They are:"),
-      tags$div(
-        tags$ul(
-          tags$li("Piano: QWERTYUIOPASDFGHJKLZXCVBqwertyuiopasdfghjkl;zxcvbnm1234567890"),
-          tags$li("Banjo: tyuiopasdfghjkl;zxcvbnm1234567890"),
-          tags$li("Trumpet: tyuiopasdfghjkl;zxcvbnm1234567890"),
-          tags$li("Saxophone: qwertyuiopasdfghjkl;zxcvbnm123"),
-          tags$li("Fiddle: qwertyuiopasdfghjkl;zxcvbnm12345678")
-        )
-      ),
+      dataTableOutput("keybinds_data"),
       tags$br(),
       tags$p("These scripts don't have inbuilt functionality for pausing, but I use ", a(href = 'https://www.autohotkey.com/v2/', 'AutoHotKey', .noWS = "outside"), " to bind .cmd/.bat files that suspend the Python process (sourced from ", a(href = 'https://github.com/craftwar/suspend', 'here', .noWS = "outside"), ") to keybinds (f8 to pause, f9 to resume). To use this functionality, simply install AutoHotKey (v2), download and extract the files in the ", a(href = 'https://github.com/E-Y-M/Goonstation_Instrument_Player/tree/main/Script%20pausing', 'Script pausing', .noWS = "outside"),  " folder, and open 'Keyboard pause - resume.ahk' in the background. Other than that, once you have the script, simply paste the keybinds into the instrument, open the script (it has a 5s buffer time), and tab into the instrument.")
   )
@@ -140,6 +133,14 @@ ui <- dashboardPage(
 server <- function(input, output) {
   
   shinyjs::disable("download_script")
+  
+  shinyInput <- function(FUN, len, id, ...) {
+    inputs <- character(len)
+    for (i in seq_len(len)) {
+      inputs[i] <- as.character(FUN(paste0(id, i), ...))
+    }
+    inputs
+  }
   
   midi = reactiveValues(midi_input = NULL,
                         midi_output = NULL,
@@ -233,6 +234,37 @@ server <- function(input, output) {
     as.list() %>% 
     unlist() %>% 
     paste0(collapse = "")
+  
+  # Dataframe for easy keybind copying ----
+  datafiles = reactiveValues(
+    keybinds_data = data.frame()
+  )
+  
+  datafiles$keybinds_data = data.frame(
+    Instrument = c("Piano",
+                   "Banjo",
+                   "Trumpet",
+                   "Sax",
+                   "Fiddle"),
+    Keybinds = c(keybinds_piano_paste,
+                 keybinds_banjo_paste,
+                 keybinds_banjo_paste,
+                 keybinds_sax_paste,
+                 keybinds_violin_paste),
+    Copy = shinyInput(actionButton, 5,
+                         'button_',
+                         label = "Copy",
+                         onclick = paste0('Shiny.onInputChange( \"select_button\" , this.id)')))
+  
+  output$keybinds_data = renderDataTable({
+    datafiles$keybinds_data
+  }, escape = FALSE, rownames = FALSE, options = list(dom = 't'))
+  
+  ## Function to copy the keybinds for a selected row ----
+  observeEvent(input$select_button, {
+    selectedRow <- as.numeric(strsplit(input$select_button, "_")[[1]][2])
+    writeClipboard(str_trim(as.character(datafiles$keybinds_data[selectedRow,2])))
+  })
   
   # Main conversion script ----
   observeEvent(input$convert_start, {
