@@ -33,27 +33,32 @@ suppressPackageStartupMessages({
 shinyjs::useShinyjs()
 
 ## Tabs ----
-### Calibration ----
+### Intro ----
 intro_tab <- tabItem(
   tabName = "intro_tab",
   box(width = 12,
       collapsible = TRUE,
-      title = "What is this?",
-      imageOutput("instruments_pic"),
+      tags$h2("What is this?"),
+      tags$img(src="img/instruments.png", width="315", style="display: block; margin-left: auto; margin-right: auto;"),
+      tags$br(),
+      #imageOutput("instruments_pic"),
       tags$p("This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments. This app was designed with the Goonstation branch of SS13 in mind, 
              but should theoretically be compatible with any virtual instrument that allows one to customize keypresses. To run the generated Python scripts, you will need a local installation of ", a(href = 'https://www.python.org/downloads/', 'Python', .noWS = "outside"), " and the ", a(href = 'https://pypi.org/project/pynput/', 'pynput', .noWS = "outside"),  " module.
-             With a local installation of Python, these can be installed by opening the terminal and executing the following commands:"),
+             With a local installation of Python, these can be installed by opening the terminal and executing the following command:"),
       tags$br(),
-      tags$b("pip install pynput"),
+      code("pip install pynput"),
       tags$br(),
       tags$br(),
+      tags$h2("Keybinds"),
       tags$p("Because pynput doesn't support some of the keys used in the default keybindings, you will need to use custom keybinds. They are:"),
       dataTableOutput("keybinds_data"),
       tags$br(),
+      tags$h2("Pausing"),
       tags$p("These scripts don't have inbuilt functionality for pausing, but I use ", a(href = 'https://www.autohotkey.com/v2/', 'AutoHotKey', .noWS = "outside"), " to bind .cmd/.bat files that suspend the Python process (sourced from ", a(href = 'https://github.com/craftwar/suspend', 'here', .noWS = "outside"), ") to keybinds (f8 to pause, f9 to resume). To use this functionality, simply install AutoHotKey (v2), download and extract the files in the ", a(href = 'https://github.com/E-Y-M/Goonstation_Instrument_Player/tree/main/Script%20pausing', 'Script pausing', .noWS = "outside"),  " folder, and open 'Keyboard pause - resume.ahk' in the background. Other than that, once you have the script, simply paste the keybinds into the instrument, open the script (it has a 5s buffer time), and tab into the instrument.")
   )
 )
 
+### Convert ----
 convert_tab <- tabItem(
   tabName = "convert_tab",
   box(width = 12,
@@ -67,12 +72,12 @@ convert_tab <- tabItem(
       radioButtons(
         "instrument",
         "Instrument to generate script for. Note that some instruments have restricted ranges. For these instruments, notes outside the range will be 'compressed' to the instrument's available range (e.g., for an instrument with a lower bound of C3, C1 and C2 will be converted to C3)",
-        choices = c("Piano",
-                    "Banjo",
-                    "Trumpet",
-                    "Sax",
-                    "Fiddle"),
-        selected = "Piano",
+        choices = c("Piano (C2 - C7)",
+                    "Banjo (E3 - C6)",
+                    "Trumpet (E3 - C6)",
+                    "Saxophone (G3 - C6)",
+                    "Fiddle (A3 - G6)"),
+        selected = "Piano (C2 - C7)",
         choiceNames = c("Piano (C2 - C7)",
                         "Banjo (E3 - C6)",
                         "Trumpet (E3 - C6)",
@@ -276,14 +281,10 @@ server <- function(input, output) {
       "Converting, please wait"
     ))
     
-    songTitle = gsub("_", " ", input$midi_upload)
-    songTitle = gsub(".mid", "", songTitle)
-    songTitle = paste0(songTitle, " (", input$instrument, ")")
-    midi$songTitle = songTitle
-    
     ## Set instrument and keybinds ----
-    if (input$instrument == "Piano") {
+    if (input$instrument == "Piano (C2 - C7)") {
       keybinds = keybinds_piano
+      midi$instrumentName = "Piano"
       
       midi_key = read.csv("www/Midi note key.csv",
                           fileEncoding = "UTF-8-BOM") %>% 
@@ -299,8 +300,9 @@ server <- function(input, output) {
         mutate(new_note = ifelse(new_note == "C8", "C7", new_note)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
-    } else if (input$instrument == "Sax") {
+    } else if (input$instrument == "Saxophone (G3 - C6)") {
       keybinds = keybinds_sax
+      midi$instrumentName = "Saxophone"
       
       midi_key = read.csv("www/Midi note key.csv",
                           fileEncoding = "UTF-8-BOM") %>% 
@@ -316,8 +318,9 @@ server <- function(input, output) {
                new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
-    } else if (input$instrument == "Fiddle") {
+    } else if (input$instrument == "Fiddle (A3 - G6)") {
       keybinds = keybinds_violin
+      midi$instrumentName = "Fiddle"
       
       midi_key = read.csv("www/Midi note key.csv",
                           fileEncoding = "UTF-8-BOM") %>% 
@@ -332,8 +335,9 @@ server <- function(input, output) {
         mutate(new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
-    } else if (input$instrument == "Banjo") {
+    } else if (input$instrument == "Banjo (E3 - C6)") {
       keybinds = keybinds_banjo
+      midi$instrumentName = "Banjo - Trumpet"
       
       midi_key = read.csv("www/Midi note key.csv",
                           fileEncoding = "UTF-8-BOM") %>% 
@@ -351,6 +355,7 @@ server <- function(input, output) {
         mutate(number = as.numeric(number))
     } else { # Trumpet
       keybinds = keybinds_banjo
+      midi$instrumentName = "Banjo - Trumpet"
       
       midi_key = read.csv("www/Midi note key.csv",
                           fileEncoding = "UTF-8-BOM") %>% 
@@ -367,6 +372,11 @@ server <- function(input, output) {
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     }
+    
+    songTitle = gsub("_", " ", input$midi_upload)
+    songTitle = gsub(".mid", "", songTitle)
+    songTitle = paste0(songTitle, " (", midi$instrumentName, ")")
+    midi$songTitle = songTitle
     
     keybinds_paste = keybinds %>% 
       select(key) %>% 
