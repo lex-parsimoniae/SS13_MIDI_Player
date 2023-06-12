@@ -109,6 +109,13 @@ convert_tab <- tabItem(
                 "Multiplier to apply to the default tempo (e.g., 1.5 = 150% faster)",
                 placement = "left",
                 trigger = "hover"),
+      dataTableOutput("track_data"),
+      textInput("instrument1_tracks",
+                "Instrument 1 tracks",
+                ""),
+      textInput("instrument2_tracks",
+                "Instrument 2 tracks",
+                ""),
       actionButton(
         "convert_start",
         "Convert MIDI",
@@ -152,7 +159,7 @@ ui <- dashboardPage(
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   shinyjs::disable("download_script")
   
@@ -191,14 +198,14 @@ server <- function(input, output) {
                                                 "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
                                                 "C6", "C#6", "D6", "D#6", "E6", "F6", "F#6", "G6", "G#6", "A6", "A#6", "B6", "C7"))
   
-  keybinds_piano_universal = data.frame(key = c("1","!","2","@","3","4","$","5","%","6","^","7","8","*","9","(","0","q","Q","w","W","e","E",
-                                                "r","t","T","y","Y","u","i","I","o","O","p","P","a","s","S","d","D","f","g","G","h","H","j",
-                                                "J","k","l","L","z","Z","x","c","C","v","V","b","B","n","m"),
-                                        new_note = c("C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
-                                                     "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
-                                                     "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
-                                                     "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
-                                                     "C6", "C#6", "D6", "D#6", "E6", "F6", "F#6", "G6", "G#6", "A6", "A#6", "B6", "C7"))
+  #keybinds_piano_universal = data.frame(key = c("1","!","2","@","3","4","$","5","%","6","^","7","8","*","9","(","0","q","Q","w","W","e","E",
+  #                                              "r","t","T","y","Y","u","i","I","o","O","p","P","a","s","S","d","D","f","g","G","h","H","j",
+  #                                              "J","k","l","L","z","Z","x","c","C","v","V","b","B","n","m"),
+  #                                      new_note = c("C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
+  #                                                   "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
+  #                                                   "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
+  #                                                   "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
+  #                                                   "C6", "C#6", "D6", "D#6", "E6", "F6", "F#6", "G6", "G#6", "A6", "A#6", "B6", "C7"))
   
   keybinds_piano = rbind(keybinds_piano_low,
                          keybinds_piano_high)
@@ -243,10 +250,9 @@ server <- function(input, output) {
     paste0(collapse = "")
   
   ## Banjo (Transpose of -8 from Piano)
-  keybinds_banjo = data.frame(key = c("t", "y", "u", "i", "o", "p",
-                                      "a", "s", "d", "f", "g", "h", "j", "k", "l",
-                                      ";", "z", "x", "c", "v", "b", "n", "m", "1",
-                                      "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+  keybinds_banjo = data.frame(key = c("J", "K", "L", "Z", "X", "C", "V", "B", "q", "w", "e",
+                                      "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f",
+                                      "g", "h", "j", "k", "l", ";", "z", "x", "c", "v", "b"),
                               new_note = c("E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
                                            "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
                                            "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5", "C6"))
@@ -286,6 +292,33 @@ server <- function(input, output) {
   observeEvent(input$select_button, {
     selectedRow <- as.numeric(strsplit(input$select_button, "_")[[1]][2])
     writeClipboard(str_trim(as.character(datafiles$keybinds_data[selectedRow,2])))
+  })
+  
+  # Load in midi to get the tracks ----
+  observeEvent(input$midi_upload, {
+    midi_tracks = readMidi(input$midi_upload$datapath) %>% 
+      arrange(track, parameterMetaSystem) %>% 
+      select(track, parameterMetaSystem, event) %>% 
+      distinct() %>% 
+      filter(event == "Sequence/Track Name") %>% 
+      rename("Instrument" = parameterMetaSystem,
+             "Track" = track) %>% 
+      select(-event)
+    
+    all_tracks_paste = paste0(midi_tracks$Track,
+                              collapse = ",")
+    
+    updateTextInput(session,
+                    "instrument1_tracks",
+                    value = all_tracks_paste)
+    
+    updateTextInput(session,
+                    "instrument2_tracks",
+                    value = all_tracks_paste)
+    
+    output$track_data = renderDataTable({
+      midi_tracks
+    }, escape = FALSE, rownames = FALSE, options = list(dom = 't'))
   })
   
   # Main conversion script ----
@@ -409,19 +442,20 @@ server <- function(input, output) {
     message("Read in MIDI #1")
     
     #t_midi_tpb = mido$MidiFile(input$midi_upload$datapath)
-    
-    message("Read in MIDI #2")
+    track_division_1 = parse_number(unlist(strsplit(input$instrument1_tracks, split = ",")))
+    track_division_2 = parse_number(unlist(strsplit(input$instrument2_tracks, split = ",")))
     
     ticks_per_beat = 480
     
     midi_processed = input_midi %>% 
-      select(time, event, parameter1) %>% 
+      select(time, event, parameter1, track) %>% 
       rename("type" = event,
              "number" = parameter1) %>% 
       filter(grepl("Note On", type)) %>%
-      mutate(number = as.numeric(number)) %>% 
+      mutate(number = as.numeric(number),
+             instrument = ifelse(track %in% track_division_1, 1, 2)) %>% 
       left_join(midi_key) %>% 
-      group_by(time) %>% 
+      group_by(time, instrument) %>% 
       summarise(notes_vec = paste(key, collapse = "")) %>% 
       distinct() %>% 
       ungroup() %>% 
@@ -450,6 +484,28 @@ server <- function(input, output) {
     
     message("Up to dealing with repeats")
     
+    ### Remove repeats in the strings
+    for (i in 1:nrow(midi_processed)) {
+      curr_vec = midi_processed$notes_vec[i]
+      
+      vec_split = unlist(strsplit(curr_vec, split = ""))
+      vec_unique = unique(vec_split)
+      vec_paste = paste0(vec_unique, collapse = "")
+      
+      midi_processed$notes_vec[i] = vec_paste
+    }
+    
+    ## NEW: Pivot to wider for multiple instruments ----
+    midi_processed = midi_processed %>% 
+      pivot_wider(names_from = instrument,
+                  values_from = notes_vec)
+    
+    `%nin%` = Negate(`%in%`)
+    
+    if ("2" %nin% colnames(midi_processed)) {
+      midi_processed$`2` = NA
+    }
+    
     ### Deal with the close-in-time repeats ----
     for (i in 1:nrow(midi_processed)) {
       if (i == nrow(midi_processed)) {
@@ -461,24 +517,9 @@ server <- function(input, output) {
       }
     }
     
-    midi_processed = midi_processed %>% 
-      group_by(time) %>% 
-      summarise(notes_vec = paste(notes_vec, collapse = ""),
-                tempo = as.numeric(tempo)) %>% 
-      distinct() %>% 
-      ungroup() %>% 
-      mutate(delay_after = NA)
-    
-    ### Remove repeats in the strings
-    for (i in 1:nrow(midi_processed)) {
-      curr_vec = midi_processed$notes_vec[i]
-      
-      vec_split = unlist(strsplit(curr_vec, split = ""))
-      vec_unique = unique(vec_split)
-      vec_paste = paste0(vec_unique, collapse = "")
-      
-      midi_processed$notes_vec[i] = vec_paste
-    }
+    midi_processed = midi_processed %>%
+      mutate(tempo = as.numeric(tempo),
+             delay_after = NA)
     
     ### Add beat delays ----
     for (i in 1:nrow(midi_processed)) {
@@ -502,7 +543,29 @@ server <- function(input, output) {
              tps = tpb * bps,
              delay = (delay_after / tps)) %>% 
       ungroup() %>% 
-      mutate(delay = delay * (1 / input$tempo_adjust))
+      mutate(delay = delay * (1 / input$tempo_adjust),
+             curr_instrument = case_when(is.na(`2`) & !is.na(`1`) ~ "1",
+                                         !is.na(`2`) & is.na(`1`) ~ "2",
+                                         !is.na(`2`) & !is.na(`1`) ~ "Both",
+                                         is.na(`2`) & is.na(`1`) ~ "None"))
+    
+    for (i in 1:nrow(midi_write)) {
+      midi_write$action[i] = case_when(midi_write$curr_instrument[i] == "1" & midi_write$curr_instrument[i+1] == "2" ~ "switch_to_2",
+                                       midi_write$curr_instrument[i] == "2" & midi_write$curr_instrument[i+1] == "1" ~ "switch_to_1",
+                                       midi_write$curr_instrument[i] == "2" & midi_write$curr_instrument[i+1] == "Both" ~ "switch_to_1",
+                                       midi_write$curr_instrument[i] == "Both" & midi_write$curr_instrument[i+1] == "1" ~ "switch_to_1",
+                                       midi_write$curr_instrument[i] == "Both" & midi_write$curr_instrument[i+1] == "Both" ~ "switch_to_1",
+                                       .default = "stay")
+    }
+    
+    # Figure out what the first focus (and action after) has to be
+    if (midi_write$curr_instrument[1] == "1" | midi_write$curr_instrument[1] == "Both") {
+      initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ")")
+      initial_instrument = " # Instrument 1"
+    } else {
+      initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ")")
+      initial_instrument = " # Instrument 2"
+    }
     
     ## Write to .py ----
     python_store = data.frame(`#command` = c(paste0("# Keybinds = ", keybinds_paste),
@@ -515,19 +578,48 @@ server <- function(input, output) {
                                              #"from pynput.mouse import Controller as MouseController",
                                              "keyboard = Controller()",
                                              #"mouse = MouseController()",
-                                             "time.sleep(5)"))
+                                             "time.sleep(5)",
+                                             paste0(initial_action, initial_instrument)))
     
+    ### NEW method for window switching (switch only when needed) ----
     if (input$multi_instrument == "Yes") {
       for (i in 1:nrow(midi_write)) {
-        if (str_length(midi_write$notes_vec[i]) == 0) {
-          curr_data = data.frame(`#command` = paste0("time.sleep(", midi_write$delay[i], ")"))
-        } else {
-          curr_data = data.frame(`#command` = c(paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ")"),
-                                                paste0("keyboard.type('", midi_write$notes_vec[i], "')"),
-                                                "time.sleep(.015)",
-                                                paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ")"),
-                                                paste0("keyboard.type('", midi_write$notes_vec[i], "')"),
-                                                paste0("time.sleep(", midi_write$delay[i], ")")))
+        if (midi_write$curr_instrument[i] == "1") { # When the current instrument is 1
+          if (midi_write$action[i] == "switch_to_2") { # When switching to instrument 2 afterwards
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`1`[i], "')"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2")))
+          } else { # ...or if staying on instrument 1
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`1`[i], "')"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")")))
+          }
+        } else  if (midi_write$curr_instrument[i] == "2") { # When the current instrument is 2
+          if (midi_write$action[i] == "switch_to_1") { # When switching to instrument 1 afterwards
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`2`[i], "')"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1")))
+          } else { # ...or if staying on instrument 2
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`2`[i], "')"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")")))
+          }
+        } else { # When the current instrument is both
+          if (midi_write$action[i] == "switch_to_1") { # When switching to instrument 1 afterwards
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`1`[i], "')"),
+                                                  "time.sleep(.015)",
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2"),
+                                                  paste0("keyboard.type('", midi_write$`2`[i], "')"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")"),
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1")))
+          } else { # ...or if staying on instrument 2
+            curr_data = data.frame(`#command` = c(paste0("keyboard.type('", midi_write$`1`[i], "')"),
+                                                  "time.sleep(.015)",
+                                                  paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2"),
+                                                  paste0("keyboard.type('", midi_write$`2`[i], "')"),
+                                                  paste0("time.sleep(", midi_write$delay[i], ")")))
+          }
         }
         
         python_store = rbind(python_store,
@@ -551,6 +643,64 @@ server <- function(input, output) {
       }
     }
     
+    ### OLD method for window switching (switch before every note) ----
+    #if (input$multi_instrument == "Yes") {
+    #  for (i in 1:nrow(midi_write)) {
+    #    # Case in which there are no notes to be played
+    #    if (is.na(midi_write$`1`[i]) & is.na(midi_write$`2`[i])) {
+    #      curr_data = data.frame(`#command` = paste0("time.sleep(", midi_write$delay[i], ")"))
+    #    } else if (!is.na(midi_write$`1`[i]) & is.na(midi_write$`2`[i])) { # Case in which instrument one has note(s) 
+    #      curr_data = data.frame(`#command` = c("time.sleep(0.015)",
+    #                                            paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1"),
+    #                                            paste0("keyboard.type('", midi_write$`1`[i], "')"),
+    #                                            paste0("time.sleep(", midi_write$delay[i], ")")))
+    #    } else if (is.na(midi_write$`1`[i]) & !is.na(midi_write$`2`[i])) { # Case in which instrument two has note(s)
+    #      curr_data = data.frame(`#command` = c("time.sleep(0.015)",
+    #                                            paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2"),
+    #                                            paste0("keyboard.type('", midi_write$`2`[i], "')"),
+    #                                            paste0("time.sleep(", midi_write$delay[i], ")")))
+    #    } else { # Case in which both instruments have notes
+    #      curr_data = data.frame(`#command` = c(paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ") # Instrument 1"),
+    #                                            paste0("keyboard.type('", midi_write$`1`[i], "')"),
+    #                                            "time.sleep(.015)",
+    #                                            paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ") # Instrument 2"),
+    #                                            paste0("keyboard.type('", midi_write$`2`[i], "')"),
+    #                                            paste0("time.sleep(", midi_write$delay[i], ")")))
+    #    }
+    #    
+    #    python_store = rbind(python_store,
+    #                         curr_data)
+    #    
+    #    midi$midi_output = python_store
+    #  }
+    #} else { # If not writing for multiple instruments
+    #  midi_write = midi_write %>% 
+    #    rowwise() %>% 
+    #    mutate(`1` = ifelse(is.na(`1`), "", `1`),
+    #           `2` = ifelse(is.na(`2`), "", `2`),
+    #           notes_vec = paste0(`1`, `2`))
+    #  
+    #  for (i in 1:nrow(midi_write)) {
+    #    if (str_length(midi_write$notes_vec[i]) == 0) {
+    #      curr_data = data.frame(`#command` = paste0("time.sleep(", midi_write$delay[i], ")"))
+    #    } else {
+    #      curr_vec = midi_write$notes_vec[i]
+    #      
+    #      vec_split = unlist(strsplit(curr_vec, split = ""))
+    #      vec_unique = unique(vec_split)
+    #      vec_paste = paste0(vec_unique, collapse = "")
+    #      
+    #      curr_data = data.frame(`#command` = c(paste0("keyboard.type('", vec_paste, "')"),
+    #                                            paste0("time.sleep(", midi_write$delay[i], ")")))
+    #    }
+    #    
+    #    python_store = rbind(python_store,
+    #                         curr_data)
+    #    
+    #    midi$midi_output = python_store
+    #  }
+    #}
+    
     showModal(modalDialog(
       title = "Complete",
       "MIDI conversion complete. Click the 'Download' button to download the script (see the previous tab or the 2nd line of the outputted script for the keybinds)."
@@ -559,18 +709,33 @@ server <- function(input, output) {
     shinyjs::enable("download_script")
   
   if (input$multi_instrument == "Yes") {
-    output$download_script <- downloadHandler(
-      filename = function() {
-        paste(midi$songTitle, " (Multiple instruments).py", sep = "")
-      },
-      content = function(file) {
-        write.table(midi$midi_output,
-                    file,
-                    quote = FALSE,
-                    row.names = FALSE,
-                    col.names = FALSE)
-      }
-    )
+    if (input$instrument1_tracks != input$instrument2_tracks) {
+      output$download_script <- downloadHandler(
+        filename = function() {
+          paste(midi$songTitle, " (Multiple instruments, different parts).py", sep = "")
+        },
+        content = function(file) {
+          write.table(midi$midi_output,
+                      file,
+                      quote = FALSE,
+                      row.names = FALSE,
+                      col.names = FALSE)
+        }
+      )
+    } else {
+      output$download_script <- downloadHandler(
+        filename = function() {
+          paste(midi$songTitle, " (Multiple instruments).py", sep = "")
+        },
+        content = function(file) {
+          write.table(midi$midi_output,
+                      file,
+                      quote = FALSE,
+                      row.names = FALSE,
+                      col.names = FALSE)
+        }
+      )
+    }
   } else {
     output$download_script <- downloadHandler(
       filename = function() {
