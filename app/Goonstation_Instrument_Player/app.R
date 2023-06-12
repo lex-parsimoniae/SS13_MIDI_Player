@@ -194,10 +194,9 @@ server <- function(input, output) {
     paste0(collapse = "")
   
   ## Sax 
-  keybinds_sax = data.frame(key = c("q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+  keybinds_sax = data.frame(key = c("Z", "X", "C", "V", "B", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
                                     "a", "s", "d", "f", "g", "h", "j", "k", "l",
-                                    ";", "z", "x", "c", "v", "b", "n", "m", "1",
-                                    "2", "3"),
+                                    ";", "z", "x", "c", "v", "b"),
                             new_note = c("G3", "G#3", "A3", "A#3", "B3",
                                          "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
                                          "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
@@ -210,10 +209,10 @@ server <- function(input, output) {
     paste0(collapse = "")
   
   ## Violin 
-  keybinds_violin = data.frame(key = c("q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+  keybinds_violin = data.frame(key = c("C", "V", "B", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
                                        "a", "s", "d", "f", "g", "h", "j", "k", "l",
                                        ";", "z", "x", "c", "v", "b", "n", "m", "1",
-                                       "2", "3", "4", "5", "6", "7", "8"),
+                                       "2", "3", "4", "5"),
                                new_note = c("A3", "A#3", "B3",
                                             "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
                                             "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",

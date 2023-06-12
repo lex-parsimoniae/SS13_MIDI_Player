@@ -5,9 +5,10 @@ account: lex-parsimoniae
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8800119
-bundleId: 7215208
+bundleId: 7332326
 url: https://lex-parsimoniae.shinyapps.io/Goonstation_Instrument_MIDI_converter/
-when: 1684035013.55885
-lastSyncTime: 1684035013.55885
+when: 1686529201.34955
+lastSyncTime: 1686529201.34955
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: app (Experimental dual playing).R
