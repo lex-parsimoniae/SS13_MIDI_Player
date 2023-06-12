@@ -34,11 +34,11 @@ These scripts don't have inbuilt functionality for pausing, but I use [AutoHotKe
 ```
 Piano: QWERTYUIOPASDFGHJKLZXCVBqwertyuiopasdfghjkl;zxcvbnm1234567890
 
-Banjo: tyuiopasdfghjkl;zxcvbnm1234567890
+Banjo: JKLZXCVBqwertyuiopasdfghjkl;zxcvb
 
-Trumpet: tyuiopasdfghjkl;zxcvbnm1234567890
+Trumpet: JKLZXCVBqwertyuiopasdfghjkl;zxcvb
 
-Saxophone: qwertyuiopasdfghjkl;zxcvbnm123
+Saxophone: ZXCVBqwertyuiopasdfghjkl;zxcvb
 
-Fiddle: qwertyuiopasdfghjkl;zxcvbnm12345678
+Fiddle: CVBqwertyuiopasdfghjkl;zxcvbnm12345
 ```
