@@ -446,19 +446,37 @@ server <- function(input, output, session) {
     
     ticks_per_beat = 480
     
-    midi_processed = input_midi %>% 
-      select(time, event, parameter1, track) %>% 
-      rename("type" = event,
-             "number" = parameter1) %>% 
-      filter(grepl("Note On", type)) %>%
-      mutate(number = as.numeric(number),
-             instrument = ifelse(track %in% track_division_1, 1, 2)) %>% 
-      left_join(midi_key) %>% 
-      group_by(time, instrument) %>% 
-      summarise(notes_vec = paste(key, collapse = "")) %>% 
-      distinct() %>% 
-      ungroup() %>% 
-      mutate(delay_after = NA)
+    if (input$multi_instrument == "Yes") {
+      midi_processed = input_midi %>% 
+        select(time, event, parameter1, track) %>% 
+        rename("type" = event,
+               "number" = parameter1) %>% 
+        filter(grepl("Note On", type)) %>%
+        mutate(number = as.numeric(number),
+               instrument = ifelse(track %in% track_division_1, 1, 2)) %>% 
+        left_join(midi_key) %>% 
+        group_by(time, instrument) %>% 
+        mutate(key = ifelse(is.na(key), "", key)) %>% 
+        summarise(notes_vec = paste(key, collapse = "")) %>% 
+        distinct() %>% 
+        ungroup() %>% 
+        mutate(delay_after = NA)
+    } else {
+      midi_processed = input_midi %>% 
+        select(time, event, parameter1, track) %>% 
+        rename("type" = event,
+               "number" = parameter1) %>% 
+        filter(grepl("Note On", type)) %>%
+        mutate(number = as.numeric(number),
+               instrument = 1) %>% 
+        left_join(midi_key) %>% 
+        group_by(time, instrument) %>% 
+        mutate(key = ifelse(is.na(key), "", key)) %>% 
+        summarise(notes_vec = paste(key, collapse = "")) %>% 
+        distinct() %>% 
+        ungroup() %>% 
+        mutate(delay_after = NA)
+    }
     
     time_division = input_midi %>% 
       filter(grepl("clocks/tick", parameterMetaSystem)) %>% 
@@ -494,10 +512,14 @@ server <- function(input, output, session) {
       midi_processed$notes_vec[i] = vec_paste
     }
     
+    message("Created note vectors")
+    
     ## NEW: Pivot to wider for multiple instruments ----
     midi_processed = midi_processed %>% 
       pivot_wider(names_from = instrument,
                   values_from = notes_vec)
+    
+    message(midi_processed)
     
     `%nin%` = Negate(`%in%`)
     
@@ -520,6 +542,8 @@ server <- function(input, output, session) {
       mutate(tempo = as.numeric(tempo),
              delay_after = NA)
     
+    message("Dealt with close-in-time repeats")
+    
     ### Add beat delays ----
     for (i in 1:nrow(midi_processed)) {
       if (midi_processed$time[i] < max(midi_processed$time)) {
@@ -529,6 +553,8 @@ server <- function(input, output, session) {
         midi_processed$delay_after[i] = 0
       }
     }
+    
+    message("Added beat delays")
     
     ### Set the time adjustment ----
     midi_write = midi_processed %>% 
@@ -548,6 +574,8 @@ server <- function(input, output, session) {
                                          !is.na(`2`) & !is.na(`1`) ~ "Both",
                                          is.na(`2`) & is.na(`1`) ~ "None"))
     
+    message("Made any tempo adjustments")
+    
     for (i in 1:nrow(midi_write)) {
       midi_write$action[i] = case_when(midi_write$curr_instrument[i] == "1" & midi_write$curr_instrument[i+1] == "2" ~ "switch_to_2",
                                        midi_write$curr_instrument[i] == "2" & midi_write$curr_instrument[i+1] == "1" ~ "switch_to_1",
@@ -557,14 +585,23 @@ server <- function(input, output, session) {
                                        .default = "stay")
     }
     
+    message("Assigned switching actions")
+    
     # Figure out what the first focus (and action after) has to be
-    if (midi_write$curr_instrument[1] == "1" | midi_write$curr_instrument[1] == "Both") {
-      initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ")")
-      initial_instrument = " # Instrument 1"
+    if (input$multi_instrument == "No") {
+      initial_action = "# PLACEHOLDER"
+      initial_instrument = ""
     } else {
-      initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ")")
-      initial_instrument = " # Instrument 2"
+      if (midi_write$curr_instrument[1] == "1" | midi_write$curr_instrument[1] == "Both") {
+        initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument1_id, ")")
+        initial_instrument = " # Instrument 1"
+      } else {
+        initial_action = paste0("win32gui.SetForegroundWindow(", input$instrument2_id, ")")
+        initial_instrument = " # Instrument 2"
+      }
     }
+    
+    message("Set initial window focus")
     
     ## Write to .py ----
     python_store = data.frame(`#command` = c(paste0("# Keybinds = ", keybinds_paste),
@@ -627,6 +664,7 @@ server <- function(input, output, session) {
         midi$midi_output = python_store
       }
     } else {
+      midi_write$notes_vec = midi_write$`1`
       for (i in 1:nrow(midi_write)) {
         if (str_length(midi_write$notes_vec[i]) == 0) {
           curr_data = data.frame(`#command` = paste0("time.sleep(", midi_write$delay[i], ")"))
