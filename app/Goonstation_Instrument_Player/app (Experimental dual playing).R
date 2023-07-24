@@ -93,13 +93,15 @@ convert_tab <- tabItem(
                     "Banjo (E3 - C6)",
                     "Trumpet (E3 - C6)",
                     "Saxophone (G3 - C6)",
-                    "Fiddle (A3 - G6)"),
+                    "Fiddle (A3 - G6)",
+                    "Guitar (E2 - C6"),
         selected = "Piano (C2 - C7)",
         choiceNames = c("Piano (C2 - C7)",
                         "Banjo (E3 - C6)",
                         "Trumpet (E3 - C6)",
                         "Saxophone (G3 - C6)",
-                        "Fiddle (A3 - G6)")
+                        "Fiddle (A3 - G6)",
+                        "Guitar (E2 - C6)")
       ),
       numericInput("tempo_adjust",
                    "Tempo modifier",
@@ -183,6 +185,25 @@ server <- function(input, output, session) {
   }, deleteFile = FALSE)
   
   # Set the keybinds ----
+  ## Electric guitar ----
+  keybinds_guitar = data.frame(key = c("T", "Y", "U", "I", 
+                                       "O", "P", "A", "S", "D", "F", "G", "H",
+                                       "J", "K", "L", "Z", "X", "C", "V", "B",
+                                       "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+                                       "a", "s", "d", "f", "g", "h", "j", "k", "l",
+                                       ";", "z", "x", "c", "v", "b"),
+                               new_note = c("E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
+                                            "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
+                                            "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
+                                            "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
+                                            "C6"))
+  
+  keybinds_guitar_paste = keybinds_guitar %>% 
+    select(key) %>% 
+    as.list() %>% 
+    unlist() %>% 
+    paste0(collapse = "")
+  
   ## Piano 
   keybinds_piano_low = data.frame(key = c("Q", "W", "E", "R", "T", "Y", "U", "I", 
                                           "O", "P", "A", "S", "D", "F", "G", "H",
@@ -272,13 +293,15 @@ server <- function(input, output, session) {
                    "Banjo",
                    "Trumpet",
                    "Sax",
-                   "Fiddle"),
+                   "Fiddle",
+                   "Guitar"),
     Keybinds = c(keybinds_piano_paste,
                  keybinds_banjo_paste,
                  keybinds_banjo_paste,
                  keybinds_sax_paste,
-                 keybinds_violin_paste),
-    Copy = shinyInput(actionButton, 5,
+                 keybinds_violin_paste,
+                 keybinds_guitar_paste),
+    Copy = shinyInput(actionButton, 6,
                          'button_',
                          label = "Copy",
                          onclick = paste0('Shiny.onInputChange( \"select_button\" , this.id)')))
@@ -402,7 +425,7 @@ server <- function(input, output, session) {
                new_note = paste0(note, octave)) %>%
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
-    } else { # Trumpet
+    } else if (input$instrument == "Trumpet (E3 - C6)") { # Trumpet
       keybinds = keybinds_banjo
       midi$instrumentName = "Banjo - Trumpet"
       
@@ -415,6 +438,24 @@ server <- function(input, output, session) {
         mutate(octave = octave + 1) %>% 
         mutate(note = str_replace(note, "\\.", "#"),
                octave = ifelse(octave < 3, 3,
+                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
+        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
+               new_note = paste0(note, octave)) %>%
+        left_join(keybinds) %>% 
+        mutate(number = as.numeric(number))
+    } else { # Guitar
+      keybinds = keybinds_guitar
+      midi$instrumentName = "Guitar"
+      
+      midi_key = read.csv("www/Midi note key.csv",
+                          fileEncoding = "UTF-8-BOM") %>% 
+        gather(key = "note",
+               value = "number",
+               -Octave) %>% 
+        rename("octave" = Octave) %>% 
+        mutate(octave = octave + 1) %>% 
+        mutate(note = str_replace(note, "\\.", "#"),
+               octave = ifelse(octave < 2, 2,
                                ifelse(octave > 5 & note != "C", 5, octave))) %>% 
         mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
                new_note = paste0(note, octave)) %>%
