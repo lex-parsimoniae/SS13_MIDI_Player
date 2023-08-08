@@ -41,4 +41,6 @@ Trumpet: JKLZXCVBqwertyuiopasdfghjkl;zxcvb
 Saxophone: ZXCVBqwertyuiopasdfghjkl;zxcvb
 
 Fiddle: CVBqwertyuiopasdfghjkl;zxcvbnm12345
+
+Electric guitar: TYUIOPASDFGHJKLZXCVBqwertyuiopasdfghjkl;zxcvb
 ```
