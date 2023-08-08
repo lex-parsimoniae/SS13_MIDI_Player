@@ -79,7 +79,7 @@ convert_tab <- tabItem(
       numericInput(
         "instrument1_id",
         "Instrument 1 ID",
-        999999
+        888888
       ),
       numericInput(
         "instrument2_id",
