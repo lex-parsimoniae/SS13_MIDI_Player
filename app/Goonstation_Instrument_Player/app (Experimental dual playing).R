@@ -190,15 +190,15 @@ server <- function(input, output, session) {
   
   # Set the keybinds ----
   ## Electric Bass ----
-  keybinds_bass = data.frame(key = c("E", "R", "T", "Y", "U", "I", 
-                                         "O", "P", "A", "S", "D", "F", "G", "H",
-                                         "J", "K", "L", "Z", "X", "C", "V", "B",
-                                         "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
-                                         "a", "s", "d", "f", "g"),
-                                 new_note = c("D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
+  keybinds_bass = data.frame(key = c("!", "@", "#", "$", "%", "^", "&", "*", "(", ")", 
+                                     "Q", "W", "E", "R", "T", "Y", "U", "I", 
+                                     "O", "P", "A", "S", "D", "F", "G", "H",
+                                     "J", "K", "L", "Z", "X", "C", "V", "B",
+                                     "q", "w", "e"),
+                                 new_note = c("D1", "D#1", "E1", "F1", "F#1", "G1", "G#1", "A1", "A#1", "B1",
+                                              "C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
                                               "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
-                                              "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
-                                              "C5", "C#5", "D5"))
+                                              "C4", "C#4", "D4"))
   
   keybinds_bass_paste = keybinds_bass %>% 
     select(key) %>% 
@@ -535,9 +535,10 @@ server <- function(input, output, session) {
         rename("octave" = Octave) %>% 
         mutate(octave = octave + 1) %>% 
         mutate(note = str_replace(note, "\\.", "#"),
-               octave = ifelse(octave < 2, 2,
-                               ifelse(octave > 5, 5, octave))) %>% 
-        mutate(new_note = paste0(note, octave)) %>%
+               octave = ifelse(octave < 1, 1,
+                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
+        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
+               new_note = paste0(note, octave)) %>%
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     }
