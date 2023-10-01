@@ -524,7 +524,10 @@ server <- function(input, output, session) {
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     } else { # Electric Bass
-      keybinds = keybinds_bass
+      keybinds = rbind(keybinds_bass,
+                       keybinds_piano) %>% 
+        distinct()
+      
       midi$instrumentName = "Electric Bass"
       
       midi_key = read.csv("www/Midi note key.csv",

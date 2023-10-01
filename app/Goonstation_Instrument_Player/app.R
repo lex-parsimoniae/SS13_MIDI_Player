@@ -485,9 +485,8 @@ server <- function(input, output) {
         mutate(octave = octave + 1) %>% 
         mutate(note = str_replace(note, "\\.", "#"),
                octave = ifelse(octave < 1, 1,
-                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
-        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
-               new_note = paste0(note, octave)) %>%
+                               ifelse(octave > 4, 4, octave))) %>% 
+        mutate(new_note = paste0(note, octave)) %>%
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     }
