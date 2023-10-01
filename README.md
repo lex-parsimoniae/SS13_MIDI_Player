@@ -43,4 +43,8 @@ Saxophone: ZXCVBqwertyuiopasdfghjkl;zxcvb
 Fiddle: CVBqwertyuiopasdfghjkl;zxcvbnm12345
 
 Electric guitar: TYUIOPASDFGHJKLZXCVBqwertyuiopasdfghjkl;zxcvb
+
+Acoustic guitar: ERTYUIOPASDFGHJKLZXCVBqwertyuiopasdfghjkl;zxcvb
+
+Electric bass: !@#$%^&*()QWERTYUIOPASDFGHJKLZXCVBqwe
 ```
