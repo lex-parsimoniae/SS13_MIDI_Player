@@ -131,7 +131,6 @@ convert_tab <- tabItem(
   )
 )
 
-
 # Define UI for application that draws a histogram
 ## UI ----
 skin_color <- "black"
