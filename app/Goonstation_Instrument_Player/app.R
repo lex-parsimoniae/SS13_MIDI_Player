@@ -79,7 +79,7 @@ convert_tab <- tabItem(
                     "Fiddle (A3 - G6)",
                     "Electric Guitar (E2 - C6)",
                     "Acoustic Guitar (D2 - C6)",
-                    "Electric Bass (D2 - D5)"),
+                    "Electric Bass (D1 - D4)"),
         selected = "Piano (C2 - C7)",
         choiceNames = c("Piano (C2 - C7)",
                         "Banjo (E3 - C6)",
@@ -88,7 +88,7 @@ convert_tab <- tabItem(
                         "Fiddle (A3 - G6)",
                         "Electric Guitar (E2 - C6)",
                         "Acoustic Guitar (D2 - C6)",
-                        "Electric Bass (D2 - D5)")
+                        "Electric Bass (D1 - D4)")
       ),
       numericInput("tempo_adjust",
                    "Tempo modifier",
@@ -472,7 +472,7 @@ server <- function(input, output) {
                new_note = paste0(note, octave)) %>%
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
-    } else { # Electric Bass
+    } else if (input$instrument == "Electric Bass (D1 - D4)") { # Electric Bass
       keybinds = keybinds_bass
       midi$instrumentName = "Electric Bass"
       
