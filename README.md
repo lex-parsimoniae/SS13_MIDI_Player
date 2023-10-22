@@ -1,7 +1,7 @@
 # SS13 MIDI Player
 
 <p align="center">
-  <img width="210" height="202" src="https://github.com/lex-parsimoniae/SS13_MIDI_Player/blob/main/app/Goonstation_Instrument_Player/www/img/instruments.png">
+  <img width="269" height="237" src="https://github.com/lex-parsimoniae/SS13_MIDI_Player/blob/main/app/Goonstation_Instrument_Player/www/img/instruments.png">
 </p>
 
 This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments. This app was designed with the Goonstation branch of SS13 (and its instruments) in mind, but should theoretically be compatible with any virtual instrument that allows one to customize keybinds. 
