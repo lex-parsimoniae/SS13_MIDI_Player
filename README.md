@@ -6,7 +6,7 @@
 
 This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments. This app was designed with the Goonstation branch of SS13 (and its instruments) in mind, but should theoretically be compatible with any virtual instrument that allows one to customize keybinds. 
 
-To run the generated scripts, you will need a local installation of [Python](https://www.python.org/downloads/) and the 'pynput' module. Once you've installed Python, 'pynput' can be installed by opening the terminal/command prompt (Windows Powershell, NOT a Python or cmd window) and executing the following command:
+To run the generated scripts, you will need a local installation of [Python](https://www.python.org/downloads/) and the 'pynput' module. Once you've installed Python, 'pynput' can be installed by opening the terminal (e.g., Windows Powershell, NOT a Python or cmd window) and executing the following command:
 ```
 pip install pynput
 ```
