@@ -116,7 +116,7 @@ convert_tab_player <- tabItem(
   box(width = 12,
       collapsible = FALSE,
       title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Does not require any additional software'),
+      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Does not require any additional software.'),
       fileInput(
         "midi_upload_player",
         "Upload your MIDI",
