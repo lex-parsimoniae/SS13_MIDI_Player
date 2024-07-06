@@ -22,14 +22,11 @@ suppressPackageStartupMessages({
   #library(grid)
   library(rclipboard)
   #library(DT)
-  library(DescTools)
+  #library(DescTools)
   #library(webexercises)
   library(zoo)
   library(tuneR)
   library(DT)
-  library(xlsx)
-  library(openxlsx)
-  library(writexl)
 })
 
 # user interface ----
@@ -45,8 +42,8 @@ intro_tab <- tabItem(
       tags$img(src="img/instruments.png", width="315", style="display: block; margin-left: auto; margin-right: auto;"),
       tags$br(),
       #imageOutput("instruments_pic"),
-      tags$p("This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments (1st tab), or to code that can be used with the player pianos (2nd tab). This app was designed with the Goonstation branch of SS13 in mind, 
-             but should theoretically be compatible with any virtual instrument that allows one to customize keypresses. To run the generated Python scripts (for the keyboard instruments only), you will need a local installation of ", a(href = 'https://www.python.org/downloads/', 'Python', .noWS = "outside"), " and the ", a(href = 'https://pypi.org/project/pynput/', 'pynput', .noWS = "outside"),  " module.
+      tags$p("This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments. This app was designed with the Goonstation branch of SS13 in mind, 
+             but should theoretically be compatible with any virtual instrument that allows one to customize keypresses. To run the generated Python scripts, you will need a local installation of ", a(href = 'https://www.python.org/downloads/', 'Python', .noWS = "outside"), " and the ", a(href = 'https://pypi.org/project/pynput/', 'pynput', .noWS = "outside"),  " module.
              With a local installation of Python, these can be installed by opening the terminal and executing the following command:"),
       tags$br(),
       code("pip install pynput"),
@@ -110,34 +107,6 @@ convert_tab <- tabItem(
   )
 )
 
-### Player piano tab ----
-convert_tab_player <- tabItem(
-  tabName = "convert_tab_player",
-  box(width = 12,
-      collapsible = FALSE,
-      title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp'),
-      fileInput(
-        "midi_upload_player",
-        "Upload your MIDI",
-        multiple = FALSE,
-        accept = c(".mid", ".midi")),
-      numericInput("lcd",
-                   "Fastest note to use (optional)",
-                   value = NA,
-                   min = 0),
-      bsTooltip("lcd",
-                "The program will auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if you have a song with fast sections, you might need to manually change this. From my testing, 60 and 120 seems to work OK for most songs.",
-                placement = "left",
-                trigger = "hover"),
-      actionButton(
-        "convert_start_player",
-        "Convert MIDI",
-        width = '100%',
-        class = "btn-success"),
-      downloadButton("download_script_player", "Download")
-  )
-)
 
 # Define UI for application that draws a histogram
 ## UI ----
@@ -153,8 +122,7 @@ ui <- dashboardPage(
     sidebarMenu(
       id = "tabs",
       menuItem("How this app works", tabName = "intro_tab", icon = icon("cog")),
-      menuItem("MIDI -> Keypresses", tabName = "convert_tab", icon = icon("music")),
-      menuItem("MIDI -> Player Piano", tabName = "convert_tab_player", icon = icon("music"))
+      menuItem("Convert MIDI", tabName = "convert_tab", icon = icon("music"))
     )
   ),
   dashboardBody(
@@ -167,8 +135,7 @@ ui <- dashboardPage(
     ),
     tabItems(
       intro_tab,
-      convert_tab,
-      convert_tab_player
+      convert_tab
     )
   )
 )
@@ -177,7 +144,6 @@ ui <- dashboardPage(
 server <- function(input, output) {
   
   shinyjs::disable("download_script")
-  #shinyjs::disable("download_script_player")
   
   shinyInput <- function(FUN, len, id, ...) {
     inputs <- character(len)
@@ -189,13 +155,7 @@ server <- function(input, output) {
   
   midi = reactiveValues(midi_input = NULL,
                         midi_output = NULL,
-                        midi_key_player = NULL,
-                        test_midi = NULL,
-                        all_strings = NULL,
-                        songTitle = NULL,
-                        note_delay = NULL,
-                        songTitlePlayer = NULL,
-                        sheet_store = NULL)
+                        songTitle = NULL)
   
   output$instruments_pic = renderImage({
     list(src = "www/img/instruments.png",
@@ -686,204 +646,7 @@ server <- function(input, output) {
                   col.names = FALSE)
     }
   )
-  
-  # Piano player converter ----
-  observeEvent(input$midi_upload_player, {
-    midi$midi_key_player = read.csv("www/Midi note key.csv",
-                               fileEncoding = "UTF-8-BOM") %>% 
-      gather(key = "note",
-             value = "number",
-             -Octave) %>% 
-      rename("octave" = Octave) %>% 
-      mutate(octave = octave + 1) %>% 
-      mutate(note = str_replace(note, "\\.", "#"),
-             octave = ifelse(octave < 2, 2,
-                             ifelse(octave > 6 & note != "C", 6, octave)),
-             new_note = paste0(note, octave)) %>% 
-      mutate(new_note = ifelse(new_note == "C8" | new_note == "C9", "C7", new_note)) %>%
-      mutate(parameter1 = as.numeric(number)) %>% 
-      select(parameter1, new_note)
-    
-    midi$test_midi = readMidi(input$midi_upload_player$datapath)
-    
-    message("Read midi for conversion to player piano")
-  })
-  
-  observeEvent(input$convert_start_player, {
-    shinyjs::disable("download_script_player")
-    req(input$midi_upload_player)
-    
-    test_midi = midi$test_midi
-    midi_key_player = midi$midi_key_player
-    
-    message("Retrieved midi object")
-    
-    songTitlePlayer = gsub("_", " ", input$midi_upload_player)
-    midi$songTitlePlayer = gsub(".mid", "", songTitlePlayer)
-    
-    showModal(modalDialog(title = "Conversion in progress", "Converting, please wait"))
-    #------#
-    ## Set the lowest common denominator (i.e., the most common distance between notes) ----
-    delays = test_midi %>% 
-      filter(grepl("Note On", event)) %>% 
-      select(time) %>% 
-      distinct() %>% 
-      arrange(time)
-    
-    for (i in 1:nrow(delays)) {
-      delays$difference[i] = delays$time[i+1]-delays$time[i]
-    }
-    
-    message("Got delays")
-    
-    ## Reformat time (divided by lcd) ----
-    ### Get the lowest common denominator 
-    unique_diffs = as.data.frame(unique(delays$difference)) %>% 
-      `colnames<-` (c("unique_diffs")) %>% 
-      filter(unique_diffs %% 10 == 0) %>% 
-      as.list()
-    
-    lcd = GCD(unique_diffs, na.rm = TRUE)
-    
-    ## Get the BPM ----
-    bpm = test_midi %>% 
-      filter(event == "Set Tempo") %>% 
-      slice_head(n = 1) %>% 
-      select(parameterMetaSystem) %>% 
-      as.numeric()
-    
-    message(bpm)
-    
-    bpm = 60000000/bpm
-    bps = bpm / 60
-    tpb = 480
-    tps = tpb * bps
-    notes_per_second = tps / lcd
-    note_delay = 1 / notes_per_second
-    
-    message("Calculated timing measures")
-    
-    if (note_delay < .1) {
-      note_delay = .1
-    } else {
-      note_delay = round(note_delay, 2)
-    }
-    
-    midi$note_delay = note_delay
-    
-    test_midi_processed = test_midi %>% 
-      filter(grepl("Note On", event)) %>% 
-      left_join(midi_key_player) %>% 
-      mutate(time_adj = time/lcd) %>% 
-      mutate(remainder = time_adj %% 1) %>% 
-      filter(remainder == 0) %>% 
-      group_by(time_adj) %>% 
-      mutate(piano = 1:n()) %>% 
-      ungroup() %>% 
-      arrange(time_adj)
-    
-    ## Get the total # of pianos needed ----
-    n_pianos = test_midi_processed %>% 
-      group_by(time_adj) %>% 
-      count() %>% 
-      arrange(desc(n)) %>% 
-      ungroup() %>% 
-      slice_head(n = 1) %>% 
-      select(n) %>% 
-      as.numeric()
-    
-    list_pianos = c(1:n_pianos)
-    
-    all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
-    
-    char_limit = 15360
-    
-    chars_needed = max(all_times)*8
-    
-    sections_needed = ceiling(chars_needed/char_limit)
-    
-    sections_list = data.frame("section" = 1:sections_needed) %>% 
-      mutate(max_chars = section*char_limit)
-    
-    ## Fill information for each beat and format for the piano players ----
-    all_notes = expand_grid(all_times,
-                            list_pianos) %>% 
-      `colnames<-` (c("time_adj", "piano")) %>% 
-      left_join(test_midi_processed %>% 
-                  select(time_adj,
-                         piano,
-                         new_note)) %>% 
-      mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
-      mutate(octave = parse_number(new_note),
-             accidentals = ifelse(grepl("b", new_note, ignore.case = FALSE), "B", 
-                                  ifelse(grepl("#", new_note), "S", "N")),
-             notename = str_extract(new_note, "[A-Z]+"),
-             dynamic = ifelse(new_note == "R", "R", "N")) %>% 
-      mutate(accidentals = ifelse(notename == "R", "R", accidentals),
-             octave = ifelse(notename == "R", "R", octave)) %>% 
-      mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, "|")) %>% 
-      ungroup() %>% 
-      mutate(time_adj = time_adj + 1,
-             chars = time_adj*8,
-             cut = ceiling(chars/char_limit)) %>% 
-      ungroup() %>% 
-      arrange(piano,
-              time_adj)
-    
-    ### For each piano, generate a single string of inputs ----
-    all_strings = all_notes %>% 
-      group_by(piano,
-               cut) %>% 
-      summarize(notestring = paste0(formatted, collapse = ""))
-    
-    #### Create workbook to store the output ----
-    wb = createWorkbook()
-    
-    for (h in 1:length(unique(all_strings$cut))) {
-      curr_string_data = filter(all_strings,
-                                cut == unique(all_strings$cut)[h]) %>% 
-        select(-cut) %>% 
-        rename("Piano" = piano,
-               "Notestring" = notestring)
-      
-      addWorksheet(wb, sheetName = paste0("Signal ", h))
-      
-      writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
-    }
-    
-    midi$sheet_store = wb
-    
-    ### Find out how many signals will need to be sent ----
-    bar_limit = floor(char_limit/5)
-    
-    total_length = as.numeric(nchar(all_strings$notestring[1]))
-    
-    n_signals = ceiling(total_length/char_limit)
-    
-    breaks = seq(from = 0,
-                 to = total_length,
-                 by = total_length/n_signals)
-    
-    final_time = max(test_midi_processed$time)
-    #------#
-    showModal(modalDialog(
-      title = "Complete",
-      "MIDI conversion complete. Click the 'Download' button to download the output."
-    ))
-    
-    shinyjs::enable("download_script_player")
-    
-  })
-  
-  output$download_script_player <- downloadHandler(
-    filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_delay, ").xlsx", sep = "")
-    },
-    content = function(file) {
-      saveWorkbook(midi$sheet_store, file = file, overwrite = TRUE)
-    }
-    )
 }
 
-# Run the application
+# Run the application 
 shinyApp(ui = ui, server = server)
