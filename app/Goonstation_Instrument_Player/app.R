@@ -116,7 +116,7 @@ convert_tab_player <- tabItem(
   box(width = 12,
       collapsible = FALSE,
       title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp'),
+      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Does not require any additional software'),
       fileInput(
         "midi_upload_player",
         "Upload your MIDI",
@@ -868,7 +868,7 @@ server <- function(input, output) {
     #------#
     showModal(modalDialog(
       title = "Complete",
-      "MIDI conversion complete. Click the 'Download' button to download the output."
+      "MIDI conversion complete. Click the 'Download' button to download the output. The filename of the download will include the recommended piano player note delay."
     ))
     
     shinyjs::enable("download_script_player")
