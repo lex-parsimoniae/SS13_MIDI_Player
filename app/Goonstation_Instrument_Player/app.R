@@ -740,10 +740,16 @@ server <- function(input, output) {
     ### Get the lowest common denominator 
     unique_diffs = as.data.frame(unique(delays$difference)) %>% 
       `colnames<-` (c("unique_diffs")) %>% 
-      filter(unique_diffs %% 10 == 0) %>% 
+      filter(unique_diffs %% 20 == 0) %>% 
       as.list()
     
-    lcd = GCD(unique_diffs, na.rm = TRUE)
+    if (is.na(input$lcd)) {
+      lcd = min(unlist(unique_diffs), na.rm = TRUE)
+    } else {
+      lcd = as.numeric(input$lcd)
+    }
+    
+    message(paste0("LCD: ", lcd))
     
     ## Get the BPM ----
     bpm = test_midi %>% 

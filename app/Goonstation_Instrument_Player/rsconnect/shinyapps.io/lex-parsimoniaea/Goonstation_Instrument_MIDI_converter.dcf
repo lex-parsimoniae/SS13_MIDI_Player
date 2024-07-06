@@ -1,0 +1,12 @@
+name: Goonstation_Instrument_MIDI_converter
+title: Goonstation_Instrument_Player
+username: lex-parsimoniaea
+account: lex-parsimoniaea
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 12281678
+bundleId: 8830944
+url: https://lex-parsimoniaea.shinyapps.io/Goonstation_Instrument_MIDI_converter/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
