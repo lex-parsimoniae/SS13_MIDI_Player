@@ -697,10 +697,12 @@ server <- function(input, output) {
       rename("octave" = Octave) %>% 
       mutate(octave = octave + 1) %>% 
       mutate(note = str_replace(note, "\\.", "#"),
-             octave = ifelse(octave < 2, 2,
-                             ifelse(octave > 6 & note != "C", 6, octave)),
+             octave = case_when(octave < 1 & note %nin% c("A", "B") ~ 1,
+                                octave > 7 & note != "C" ~ 7,
+                                octave > 8 & note == "C" ~ 8,
+                                .default = octave),
              new_note = paste0(note, octave)) %>% 
-      mutate(new_note = ifelse(new_note == "C8" | new_note == "C9", "C7", new_note)) %>%
+      #mutate(new_note = ifelse(new_note == "C8" | new_note == "C9", "C7", new_note)) %>%
       mutate(parameter1 = as.numeric(number)) %>% 
       select(parameter1, new_note)
     
@@ -740,7 +742,7 @@ server <- function(input, output) {
     ### Get the lowest common denominator 
     unique_diffs = as.data.frame(unique(delays$difference)) %>% 
       `colnames<-` (c("unique_diffs")) %>% 
-      filter(unique_diffs %% 20 == 0) %>% 
+      filter(unique_diffs %% 10 == 0) %>% 
       as.list()
     
     if (is.na(input$lcd)) {
@@ -758,24 +760,23 @@ server <- function(input, output) {
       select(parameterMetaSystem) %>% 
       as.numeric()
     
-    message(bpm)
-    
     bpm = 60000000/bpm
     bps = bpm / 60
     tpb = 480
     tps = tpb * bps
     notes_per_second = tps / lcd
     note_delay = 1 / notes_per_second
+    note_timing = round(100 * note_delay)
+    
+    if (note_timing < 10) {
+      note_timing = 10
+    } else {
+      note_timing = note_timing
+    }
     
     message("Calculated timing measures")
     
-    if (note_delay < .1) {
-      note_delay = .1
-    } else {
-      note_delay = round(note_delay, 2)
-    }
-    
-    midi$note_delay = note_delay
+    midi$note_timing = note_timing
     
     test_midi_processed = test_midi %>% 
       filter(grepl("Note On", event)) %>% 
@@ -789,37 +790,65 @@ server <- function(input, output) {
       arrange(time_adj)
     
     ## Get the total # of pianos needed ----
-    n_pianos = test_midi_processed %>% 
-      group_by(time_adj) %>% 
-      count() %>% 
-      arrange(desc(n)) %>% 
-      ungroup() %>% 
-      slice_head(n = 1) %>% 
-      select(n) %>% 
-      as.numeric()
+    #n_pianos = test_midi_processed %>% 
+    #  group_by(time_adj) %>% 
+    #  count() %>% 
+    #  arrange(desc(n)) %>% 
+    #  ungroup() %>% 
+    #  slice_head(n = 1) %>% 
+    #  select(n) %>% 
+    #  as.numeric()
+    #
+    #list_pianos = c(1:n_pianos)
     
-    list_pianos = c(1:n_pianos)
+    #all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
     
-    all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
+    char_limit = 15360 - 10
     
-    char_limit = 15360
+    #chars_needed = max(all_times)*8
+    #
+    #sections_needed = ceiling(chars_needed/char_limit)
+    #
+    #sections_list = data.frame("section" = 1:sections_needed) %>% 
+    #  mutate(max_chars = section*char_limit)
+    #
+    ### Fill information for each beat and format for the piano players ----
+    #all_notes = expand_grid(all_times,
+    #                        list_pianos) %>% 
+    #  `colnames<-` (c("time_adj", "piano")) %>% 
+    #  left_join(test_midi_processed %>% 
+    #              select(time_adj,
+    #                     piano,
+    #                     new_note)) %>% 
+    #  mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
+    #  mutate(octave = parse_number(new_note),
+    #         accidentals = ifelse(grepl("b", new_note, ignore.case = FALSE), "B", 
+    #                              ifelse(grepl("#", new_note), "S", "N")),
+    #         notename = str_extract(new_note, "[A-Z]+"),
+    #         dynamic = ifelse(new_note == "R", "R", "N")) %>% 
+    #  mutate(accidentals = ifelse(notename == "R", "R", accidentals),
+    #         octave = ifelse(notename == "R", "R", octave)) %>% 
+    #  mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, "|")) %>% 
+    #  ungroup() %>% 
+    #  mutate(time_adj = time_adj + 1,
+    #         chars = time_adj*8,
+    #         cut = ceiling(chars/char_limit)) %>% 
+    #  ungroup() %>% 
+    #  arrange(piano,
+    #          time_adj)
     
-    chars_needed = max(all_times)*8
+    all_notes = test_midi_processed %>% 
+      select(time_adj,
+             new_note) %>% 
+      mutate(new_note = ifelse(is.na(new_note), "R1", new_note))
     
-    sections_needed = ceiling(chars_needed/char_limit)
+    ## Create delays ----
+    for (i in 1:nrow(all_notes)) {
+      all_notes$delay[i] = all_notes$time_adj[i+1] - all_notes$time_adj[i]
+    }
     
-    sections_list = data.frame("section" = 1:sections_needed) %>% 
-      mutate(max_chars = section*char_limit)
-    
-    ## Fill information for each beat and format for the piano players ----
-    all_notes = expand_grid(all_times,
-                            list_pianos) %>% 
-      `colnames<-` (c("time_adj", "piano")) %>% 
-      left_join(test_midi_processed %>% 
-                  select(time_adj,
-                         piano,
-                         new_note)) %>% 
-      mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
+    ## Format strings ----
+    all_notes = all_notes %>% 
       mutate(octave = parse_number(new_note),
              accidentals = ifelse(grepl("b", new_note, ignore.case = FALSE), "B", 
                                   ifelse(grepl("#", new_note), "S", "N")),
@@ -827,20 +856,22 @@ server <- function(input, output) {
              dynamic = ifelse(new_note == "R", "R", "N")) %>% 
       mutate(accidentals = ifelse(notename == "R", "R", accidentals),
              octave = ifelse(notename == "R", "R", octave)) %>% 
-      mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, "|")) %>% 
+      mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, ",", delay, "|")) %>% 
       ungroup() %>% 
       mutate(time_adj = time_adj + 1,
-             chars = time_adj*8,
+             row_number = 1:n(),
+             chars = row_number*10,
              cut = ceiling(chars/char_limit)) %>% 
       ungroup() %>% 
-      arrange(piano,
-              time_adj)
+      arrange(time_adj)
     
     ### For each piano, generate a single string of inputs ----
-    all_strings = all_notes %>% 
-      group_by(piano,
-               cut) %>% 
-      summarize(notestring = paste0(formatted, collapse = ""))
+    all_strings = all_notes %>%
+      group_by(cut) %>% 
+      summarize(notestring = paste0(formatted, collapse = "")) %>% 
+      rowwise() %>% 
+      mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
+      ungroup()
     
     #### Create workbook to store the output ----
     wb = createWorkbook()
@@ -848,9 +879,7 @@ server <- function(input, output) {
     for (h in 1:length(unique(all_strings$cut))) {
       curr_string_data = filter(all_strings,
                                 cut == unique(all_strings$cut)[h]) %>% 
-        select(-cut) %>% 
-        rename("Piano" = piano,
-               "Notestring" = notestring)
+        select(-cut)
       
       addWorksheet(wb, sheetName = paste0("Signal ", h))
       
@@ -860,17 +889,17 @@ server <- function(input, output) {
     midi$sheet_store = wb
     
     ### Find out how many signals will need to be sent ----
-    bar_limit = floor(char_limit/5)
-    
-    total_length = as.numeric(nchar(all_strings$notestring[1]))
-    
-    n_signals = ceiling(total_length/char_limit)
-    
-    breaks = seq(from = 0,
-                 to = total_length,
-                 by = total_length/n_signals)
-    
-    final_time = max(test_midi_processed$time)
+    #bar_limit = floor(char_limit/5)
+    #
+    #total_length = as.numeric(nchar(all_strings$notestring[1]))
+    #
+    #n_signals = ceiling(total_length/char_limit)
+    #
+    #breaks = seq(from = 0,
+    #             to = total_length,
+    #             by = total_length/n_signals)
+    #
+    #final_time = max(test_midi_processed$time)
     #------#
     showModal(modalDialog(
       title = "Complete",
@@ -883,7 +912,7 @@ server <- function(input, output) {
   
   output$download_script_player <- downloadHandler(
     filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_delay, ").xlsx", sep = "")
+      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").xlsx", sep = "")
     },
     content = function(file) {
       saveWorkbook(midi$sheet_store, file = file, overwrite = TRUE)
