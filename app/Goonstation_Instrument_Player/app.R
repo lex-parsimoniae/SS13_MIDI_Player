@@ -747,6 +747,13 @@ server <- function(input, output) {
     
     if (is.na(input$lcd)) {
       lcd = min(unlist(unique_diffs), na.rm = TRUE)
+      
+      if (lcd < 60) {
+        lcd = 60
+      } else {
+        lcd = lcd
+      }
+      
     } else {
       lcd = as.numeric(input$lcd)
     }
@@ -888,7 +895,7 @@ server <- function(input, output) {
     #  writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
     #}
     #
-    #midi$sheet_store = wb
+    midi$sheet_store = all_strings
     
     ### Find out how many signals will need to be sent ----
     #bar_limit = floor(char_limit/5)
@@ -914,14 +921,15 @@ server <- function(input, output) {
   
   output$download_script_player <- downloadHandler(
     filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv", sep = "")
+      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv")
     },
     content = function(file) {
-      write.table(midi$sheet_store,
-                  filename,
-                  quote = FALSE,
+      write.csv(midi$sheet_store,
+                  file,
+                  quote = TRUE,
                   row.names = FALSE,
-                  col.names = FALSE)
+                  col.names = FALSE,
+                sep = "")
     }
     )
 }
