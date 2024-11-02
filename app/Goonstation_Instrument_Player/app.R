@@ -913,12 +913,12 @@ server <- function(input, output) {
   })
   
   output$download_script_player <- downloadHandler(
-    filename_player = function() {
+    filename = function() {
       paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv", sep = "")
     },
     content = function(file) {
       write.table(midi$sheet_store,
-                  filename_player,
+                  filename,
                   quote = FALSE,
                   row.names = FALSE,
                   col.names = FALSE)
