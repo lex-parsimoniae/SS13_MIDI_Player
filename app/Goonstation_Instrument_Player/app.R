@@ -116,7 +116,7 @@ convert_tab_player <- tabItem(
   box(width = 12,
       collapsible = FALSE,
       title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Does not require any additional software.'),
+      tags$p('Takes a MIDI file and outputs a .csv file where the rows represent different player pianos (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Supports concurrent note playing. Does not require any additional software.'),
       fileInput(
         "midi_upload_player",
         "Upload your MIDI",
@@ -871,22 +871,24 @@ server <- function(input, output) {
       summarize(notestring = paste0(formatted, collapse = "")) %>% 
       rowwise() %>% 
       mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
-      ungroup()
+      ungroup() %>% 
+      rename("Piano" = cut,
+             "Notestring" = notestring)
     
     #### Create workbook to store the output ----
-    wb = createWorkbook()
-    
-    for (h in 1:length(unique(all_strings$cut))) {
-      curr_string_data = filter(all_strings,
-                                cut == unique(all_strings$cut)[h]) %>% 
-        select(-cut)
-      
-      addWorksheet(wb, sheetName = paste0("Signal ", h))
-      
-      writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
-    }
-    
-    midi$sheet_store = wb
+    #wb = createWorkbook()
+    #
+    #for (h in 1:length(unique(all_strings$cut))) {
+    #  curr_string_data = filter(all_strings,
+    #                            cut == unique(all_strings$cut)[h]) %>% 
+    #    select(-cut)
+    #  
+    #  addWorksheet(wb, sheetName = paste0("Signal ", h))
+    #  
+    #  writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
+    #}
+    #
+    #midi$sheet_store = wb
     
     ### Find out how many signals will need to be sent ----
     #bar_limit = floor(char_limit/5)
@@ -911,11 +913,15 @@ server <- function(input, output) {
   })
   
   output$download_script_player <- downloadHandler(
-    filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").xlsx", sep = "")
+    filename_player = function() {
+      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv", sep = "")
     },
     content = function(file) {
-      saveWorkbook(midi$sheet_store, file = file, overwrite = TRUE)
+      write.table(midi$sheet_store,
+                  filename_player,
+                  quote = FALSE,
+                  row.names = FALSE,
+                  col.names = FALSE)
     }
     )
 }
