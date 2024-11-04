@@ -774,11 +774,19 @@ server <- function(input, output) {
       lcd = arrange(unique_diffs_data,
                     curr_note_timing) %>% 
         ungroup() %>% 
-        filter(curr_note_timing < 5) %>% 
-        filter(unique_diffs == min(unique_diffs)) %>% 
-        select(unique_diffs) %>% 
-        as.numeric()
+        filter(curr_note_timing < 5) 
       
+      if (nrow(lcd) == 0) {
+        lcd = unique_diffs_data %>% 
+          filter(unique_diffs == min(unique_diffs)) %>% 
+          select(unique_diffs) %>% 
+          as.numeric()
+      } else {
+        lcd = lcd %>% 
+          filter(unique_diffs == min(unique_diffs)) %>% 
+          select(unique_diffs) %>% 
+          as.numeric()
+      }
     } else {
       lcd = as.numeric(input$lcd)
     }
