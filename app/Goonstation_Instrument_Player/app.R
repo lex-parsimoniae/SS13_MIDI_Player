@@ -738,28 +738,6 @@ server <- function(input, output) {
     
     message("Got delays")
     
-    ## Reformat time (divided by lcd) ----
-    ### Get the lowest common denominator 
-    unique_diffs = as.data.frame(unique(delays$difference)) %>% 
-      `colnames<-` (c("unique_diffs")) %>% 
-      filter(unique_diffs %% 10 == 0) %>% 
-      as.list()
-    
-    if (is.na(input$lcd)) {
-      lcd = min(unlist(unique_diffs), na.rm = TRUE)
-      
-      if (lcd < 60) {
-        lcd = 60
-      } else {
-        lcd = lcd
-      }
-      
-    } else {
-      lcd = as.numeric(input$lcd)
-    }
-    
-    message(paste0("LCD: ", lcd))
-    
     ## Get the BPM ----
     bpm = test_midi %>% 
       filter(event == "Set Tempo") %>% 
@@ -771,6 +749,42 @@ server <- function(input, output) {
     bps = bpm / 60
     tpb = 480
     tps = tpb * bps
+    
+    ## Reformat time (divided by lcd) ----
+    ### Get the lowest common denominator 
+    unique_diffs = as.data.frame(unique(delays$difference)) %>% 
+      `colnames<-` (c("unique_diffs")) %>% 
+      filter(unique_diffs %% 10 == 0) %>% 
+      as.list()
+    
+    unique_diffs_data = as.data.frame(unique_diffs)
+    
+    if (is.na(input$lcd)) {
+      for (m in 1:nrow(unique_diffs_data)) {
+        curr_diff = unique_diffs_data$unique_diffs[m]
+        
+        curr_notes_per_second = tps / curr_diff
+        curr_note_delay = 1 / curr_notes_per_second
+        unique_diffs_data$curr_note_timing[m] = abs(10 - (100 * curr_note_delay))
+        
+      }
+      
+      message(unique_diffs_data)
+      
+      lcd = arrange(unique_diffs_data,
+                    curr_note_timing) %>% 
+        ungroup() %>% 
+        filter(curr_note_timing < 5) %>% 
+        filter(unique_diffs == min(unique_diffs)) %>% 
+        select(unique_diffs) %>% 
+        as.numeric()
+      
+    } else {
+      lcd = as.numeric(input$lcd)
+    }
+    
+    message(paste0("LCD: ", lcd))
+    
     notes_per_second = tps / lcd
     note_delay = 1 / notes_per_second
     note_timing = round(100 * note_delay)
