@@ -116,7 +116,9 @@ convert_tab_player <- tabItem(
   box(width = 12,
       collapsible = FALSE,
       title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs a .csv file where the rows represent different player pianos (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Supports concurrent note playing. Does not require any additional software. NOTE: Percussion tracks and other tracks without notes do not play well with the converter, so make sure to remove those before trying to convert! I recommend MuseScore for editing MIDIs.'),
+      tags$p('Takes a MIDI file and outputs a .csv file where the rows represent different player pianos (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Supports concurrent note playing. Does not require any additional software.'),
+      tags$br(),
+      tags$p('NOTE: Percussion tracks and other tracks without notes do not play well with the converter, so make sure to remove those from the MIDI before trying to convert! Also, if a MIDI just refuses to sound right no matter the delay you set (e.g., ends up with super-long delays) one thing that I have found works is opening the downloaded MIDI in ', a(href = 'https://musescore.org/en/download', 'MuseScore', .noWS = "outside"), ' and re-exporting the file to MIDI.'),
       fileInput(
         "midi_upload_player",
         "Upload your MIDI",
@@ -127,7 +129,7 @@ convert_tab_player <- tabItem(
                    value = NA,
                    min = 0),
       bsTooltip("lcd",
-                "The program will auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if it ends up sounding wonky, you might need to manually change this. From my testing, 60, 80 and 120 seems to work OK for most songs.",
+                "The program will attempt to auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if it ends up sounding wonky, you might need to manually change this. From my testing, 60, 80 and 120 seem to work OK for most songs.",
                 placement = "left",
                 trigger = "hover"),
       actionButton(
@@ -736,6 +738,7 @@ server <- function(input, output) {
       delays$difference[i] = delays$time[i+1]-delays$time[i]
     }
     
+    message(delays)
     message("Got delays")
     
     ## Get the BPM ----
@@ -756,6 +759,8 @@ server <- function(input, output) {
       `colnames<-` (c("unique_diffs")) %>% 
       filter(unique_diffs %% 10 == 0) %>% 
       as.list()
+    
+    message(unique_diffs)
     
     unique_diffs_data = as.data.frame(unique_diffs)
     
