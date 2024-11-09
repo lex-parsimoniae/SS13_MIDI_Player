@@ -118,7 +118,7 @@ convert_tab_player <- tabItem(
       title = "Convert midi to Player Piano input",
       tags$p('Takes a MIDI file and outputs a .csv file where the rows represent different player pianos (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Supports concurrent note playing, so each additional player piano will need to be set up to play sequentially, not simultaneously. Does not require any additional software.'),
       tags$br(),
-      tags$b('NOTE: Percussion tracks and other tracks without notes do not play well with the converter, so make sure to remove those from the MIDI before trying to convert! Also, if a MIDI just refuses to sound right no matter the delay you set (e.g., ends up with super-long delays) one thing that I have found works is opening the downloaded MIDI in ', a(href = 'https://musescore.org/en/download', 'MuseScore', .noWS = "outside"), ' and re-exporting the file to MIDI.'),
+      tags$b("NOTE: Percussion tracks and other tracks without notes do not play well with the converter, so make sure to remove those from the MIDI before trying to convert! Also, if a MIDI just refuses to work (i.e., crashes the program/disconnects the app) or doesn't sound right no matter the delay you set (e.g., ends up with super-long delays) one thing that I have found works is opening the downloaded MIDI in ", a(href = 'https://musescore.org/en/download', 'MuseScore', .noWS = "outside"), ' and re-exporting the file to MIDI.'),
       tags$br(),
       fileInput(
         "midi_upload_player",
