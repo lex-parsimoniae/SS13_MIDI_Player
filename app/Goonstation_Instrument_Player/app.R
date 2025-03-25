@@ -199,7 +199,8 @@ server <- function(input, output) {
                         songTitle = NULL,
                         note_delay = NULL,
                         songTitlePlayer = NULL,
-                        sheet_store = NULL)
+                        sheet_store = NULL,
+                        fastest_note = NULL)
   
   output$instruments_pic = renderImage({
     list(src = "www/img/instruments.png",
@@ -800,6 +801,8 @@ server <- function(input, output) {
     
     message(paste0("LCD: ", lcd))
     
+    midi$fastest_note = lcd
+    
     notes_per_second = tps / lcd
     note_delay = 1 / notes_per_second
     note_timing = round(100 * note_delay)
@@ -890,7 +893,7 @@ server <- function(input, output) {
   
   output$download_script_player <- downloadHandler(
     filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv")
+      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ", Fastest note = ", midi$fastest_note, ").csv")
     },
     content = function(file) {
       write.csv(midi$sheet_store,
