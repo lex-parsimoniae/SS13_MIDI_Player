@@ -1,4 +1,3 @@
-#
 # This is a Shiny web application. You can run the application by clicking
 # the 'Run App' button above.
 #
@@ -729,7 +728,7 @@ server <- function(input, output) {
     midi$songTitlePlayer = gsub(".mid", "", songTitlePlayer)
     
     showModal(modalDialog(title = "Conversion in progress", "Converting, please wait"))
-    #------#
+
     ## Set the lowest common denominator (i.e., the most common distance between notes) ----
     delays = test_midi %>% 
       filter(grepl("Note On", event)) %>% 
@@ -826,55 +825,9 @@ server <- function(input, output) {
       ungroup() %>% 
       arrange(time_adj)
     
-    ## Get the total # of pianos needed ----
-    #n_pianos = test_midi_processed %>% 
-    #  group_by(time_adj) %>% 
-    #  count() %>% 
-    #  arrange(desc(n)) %>% 
-    #  ungroup() %>% 
-    #  slice_head(n = 1) %>% 
-    #  select(n) %>% 
-    #  as.numeric()
-    #
-    #list_pianos = c(1:n_pianos)
-    
-    #all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
-    
     #char_limit = 15360 - 10
     
     note_limit = 1918
-    
-    #chars_needed = max(all_times)*8
-    #
-    #sections_needed = ceiling(chars_needed/char_limit)
-    #
-    #sections_list = data.frame("section" = 1:sections_needed) %>% 
-    #  mutate(max_chars = section*char_limit)
-    #
-    ### Fill information for each beat and format for the piano players ----
-    #all_notes = expand_grid(all_times,
-    #                        list_pianos) %>% 
-    #  `colnames<-` (c("time_adj", "piano")) %>% 
-    #  left_join(test_midi_processed %>% 
-    #              select(time_adj,
-    #                     piano,
-    #                     new_note)) %>% 
-    #  mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
-    #  mutate(octave = parse_number(new_note),
-    #         accidentals = ifelse(grepl("b", new_note, ignore.case = FALSE), "B", 
-    #                              ifelse(grepl("#", new_note), "S", "N")),
-    #         notename = str_extract(new_note, "[A-Z]+"),
-    #         dynamic = ifelse(new_note == "R", "R", "N")) %>% 
-    #  mutate(accidentals = ifelse(notename == "R", "R", accidentals),
-    #         octave = ifelse(notename == "R", "R", octave)) %>% 
-    #  mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, "|")) %>% 
-    #  ungroup() %>% 
-    #  mutate(time_adj = time_adj + 1,
-    #         chars = time_adj*8,
-    #         cut = ceiling(chars/char_limit)) %>% 
-    #  ungroup() %>% 
-    #  arrange(piano,
-    #          time_adj)
     
     all_notes = test_midi_processed %>% 
       select(time_adj,
@@ -914,34 +867,8 @@ server <- function(input, output) {
       rename("Component" = cut,
              "Notestring" = notestring)
     
-    #### Create workbook to store the output ----
-    #wb = createWorkbook()
-    #
-    #for (h in 1:length(unique(all_strings$cut))) {
-    #  curr_string_data = filter(all_strings,
-    #                            cut == unique(all_strings$cut)[h]) %>% 
-    #    select(-cut)
-    #  
-    #  addWorksheet(wb, sheetName = paste0("Signal ", h))
-    #  
-    #  writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
-    #}
-    #
     midi$sheet_store = all_strings
     
-    ### Find out how many signals will need to be sent ----
-    #bar_limit = floor(char_limit/5)
-    #
-    #total_length = as.numeric(nchar(all_strings$notestring[1]))
-    #
-    #n_signals = ceiling(total_length/char_limit)
-    #
-    #breaks = seq(from = 0,
-    #             to = total_length,
-    #             by = total_length/n_signals)
-    #
-    #final_time = max(test_midi_processed$time)
-    #------#
     showModal(modalDialog(
       title = "Complete",
       "MIDI conversion complete. Click the 'Download' button to download the output. The filename of the download will include the recommended piano player note delay."
@@ -968,3 +895,4 @@ server <- function(input, output) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
+
