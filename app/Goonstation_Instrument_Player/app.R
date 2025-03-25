@@ -840,7 +840,9 @@ server <- function(input, output) {
     
     #all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
     
-    char_limit = 15360 - 10
+    #char_limit = 15360 - 10
+    
+    note_limit = 1918
     
     #chars_needed = max(all_times)*8
     #
@@ -896,9 +898,9 @@ server <- function(input, output) {
       mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, ",", delay, "|")) %>% 
       ungroup() %>% 
       mutate(time_adj = time_adj + 1,
-             row_number = 1:n(),
-             chars = row_number*10,
-             cut = ceiling(chars/char_limit)) %>% 
+             row_number = 1:n()) %>% 
+      rowwise() %>% 
+      mutate(cut = ceiling(row_number/note_limit)) %>% 
       ungroup() %>% 
       arrange(time_adj)
     
@@ -909,7 +911,7 @@ server <- function(input, output) {
       rowwise() %>% 
       mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
       ungroup() %>% 
-      rename("Piano" = cut,
+      rename("Component" = cut,
              "Notestring" = notestring)
     
     #### Create workbook to store the output ----
