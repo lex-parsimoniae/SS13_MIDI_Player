@@ -825,6 +825,16 @@ server <- function(input, output) {
       ungroup() %>% 
       arrange(time_adj)
     
+    if (test_midi_processed$time[1] != 0) {
+      test_midi_prepend = test_midi_processed %>% 
+        slice_head(n = 1) %>% 
+        mutate(new_note = "R1",
+               time_adj = 0)
+      
+      test_midi_processed = test_midi_prepend %>% 
+        rbind(test_midi_processed)
+    }
+    
     #char_limit = 15360 - 10
     
     note_limit = 1918
