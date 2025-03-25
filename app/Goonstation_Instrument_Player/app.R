@@ -116,18 +116,23 @@ convert_tab_player <- tabItem(
   box(width = 12,
       collapsible = FALSE,
       title = "Convert midi to Player Piano input",
-      tags$p('Takes a MIDI file and outputs an Excel sheet where the rows represent different player pianos and the different sheets represent the signals needed to play the song (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Does not require any additional software.'),
+      tags$p('Takes a MIDI file and outputs a .csv file where the rows represent different player pianos (a song that exceeds the player piano character limit will need to be input as separate signals or additional pianos to play the entire song, e.g., via MechComp). Supports concurrent note playing, so each additional player piano will need to be set up to play sequentially, not simultaneously. Does not require any additional software.'),
+      tags$br(),
+      tags$b("NOTE: Percussion tracks and other tracks without notes do not play well with the converter, so make sure to remove those from the MIDI before trying to convert!"), 
+      tags$br(),
+      tags$br(),
+      tags$p("Also, if a MIDI just refuses to work (i.e., crashes the program/disconnects the app) or doesn't sound right no matter the delay you set (e.g., ends up with super-long delays) one thing that I have found works is opening the downloaded MIDI in ", a(href = 'https://musescore.org/en/download', 'MuseScore', .noWS = "outside"), ' and re-exporting the file to MIDI.'),
       fileInput(
         "midi_upload_player",
         "Upload your MIDI",
         multiple = FALSE,
         accept = c(".mid", ".midi")),
       numericInput("lcd",
-                   "Fastest note to use (optional)",
+                   "Fastest MIDI delay to use (optional, measured in ticks)",
                    value = NA,
                    min = 0),
       bsTooltip("lcd",
-                "The program will auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if you have a song with fast sections, you might need to manually change this. From my testing, 60 and 120 seems to work OK for most songs.",
+                "The program will attempt to auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if it ends up sounding wonky, you might need to manually change this. From my testing, 60, 80 and 120 seem to work OK for most songs.",
                 placement = "left",
                 trigger = "hover"),
       actionButton(
@@ -736,22 +741,8 @@ server <- function(input, output) {
       delays$difference[i] = delays$time[i+1]-delays$time[i]
     }
     
+    message(delays)
     message("Got delays")
-    
-    ## Reformat time (divided by lcd) ----
-    ### Get the lowest common denominator 
-    unique_diffs = as.data.frame(unique(delays$difference)) %>% 
-      `colnames<-` (c("unique_diffs")) %>% 
-      filter(unique_diffs %% 10 == 0) %>% 
-      as.list()
-    
-    if (is.na(input$lcd)) {
-      lcd = min(unlist(unique_diffs), na.rm = TRUE)
-    } else {
-      lcd = as.numeric(input$lcd)
-    }
-    
-    message(paste0("LCD: ", lcd))
     
     ## Get the BPM ----
     bpm = test_midi %>% 
@@ -764,6 +755,52 @@ server <- function(input, output) {
     bps = bpm / 60
     tpb = 480
     tps = tpb * bps
+    
+    ## Reformat time (divided by lcd) ----
+    ### Get the lowest common denominator 
+    unique_diffs = as.data.frame(unique(delays$difference)) %>% 
+      `colnames<-` (c("unique_diffs")) %>% 
+      filter(unique_diffs %% 10 == 0) %>% 
+      as.list()
+    
+    message(unique_diffs)
+    
+    unique_diffs_data = as.data.frame(unique_diffs)
+    
+    if (is.na(input$lcd)) {
+      for (m in 1:nrow(unique_diffs_data)) {
+        curr_diff = unique_diffs_data$unique_diffs[m]
+        
+        curr_notes_per_second = tps / curr_diff
+        curr_note_delay = 1 / curr_notes_per_second
+        unique_diffs_data$curr_note_timing[m] = abs(10 - (100 * curr_note_delay))
+        
+      }
+      
+      message(unique_diffs_data)
+      
+      lcd = arrange(unique_diffs_data,
+                    curr_note_timing) %>% 
+        ungroup() %>% 
+        filter(curr_note_timing < 5) 
+      
+      if (nrow(lcd) == 0) {
+        lcd = unique_diffs_data %>% 
+          filter(unique_diffs == min(unique_diffs)) %>% 
+          select(unique_diffs) %>% 
+          as.numeric()
+      } else {
+        lcd = lcd %>% 
+          filter(unique_diffs == min(unique_diffs)) %>% 
+          select(unique_diffs) %>% 
+          as.numeric()
+      }
+    } else {
+      lcd = as.numeric(input$lcd)
+    }
+    
+    message(paste0("LCD: ", lcd))
+    
     notes_per_second = tps / lcd
     note_delay = 1 / notes_per_second
     note_timing = round(100 * note_delay)
@@ -803,7 +840,9 @@ server <- function(input, output) {
     
     #all_times = seq(from = 0, to = max(test_midi_processed$time_adj))
     
-    char_limit = 15360 - 10
+    #char_limit = 15360 - 10
+    
+    note_limit = 1918
     
     #chars_needed = max(all_times)*8
     #
@@ -859,9 +898,9 @@ server <- function(input, output) {
       mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, ",", delay, "|")) %>% 
       ungroup() %>% 
       mutate(time_adj = time_adj + 1,
-             row_number = 1:n(),
-             chars = row_number*10,
-             cut = ceiling(chars/char_limit)) %>% 
+             row_number = 1:n()) %>% 
+      rowwise() %>% 
+      mutate(cut = ceiling(row_number/note_limit)) %>% 
       ungroup() %>% 
       arrange(time_adj)
     
@@ -871,22 +910,24 @@ server <- function(input, output) {
       summarize(notestring = paste0(formatted, collapse = "")) %>% 
       rowwise() %>% 
       mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
-      ungroup()
+      ungroup() %>% 
+      rename("Component" = cut,
+             "Notestring" = notestring)
     
     #### Create workbook to store the output ----
-    wb = createWorkbook()
-    
-    for (h in 1:length(unique(all_strings$cut))) {
-      curr_string_data = filter(all_strings,
-                                cut == unique(all_strings$cut)[h]) %>% 
-        select(-cut)
-      
-      addWorksheet(wb, sheetName = paste0("Signal ", h))
-      
-      writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
-    }
-    
-    midi$sheet_store = wb
+    #wb = createWorkbook()
+    #
+    #for (h in 1:length(unique(all_strings$cut))) {
+    #  curr_string_data = filter(all_strings,
+    #                            cut == unique(all_strings$cut)[h]) %>% 
+    #    select(-cut)
+    #  
+    #  addWorksheet(wb, sheetName = paste0("Signal ", h))
+    #  
+    #  writeData(wb, sheet = paste0("Signal ", h), x = curr_string_data)
+    #}
+    #
+    midi$sheet_store = all_strings
     
     ### Find out how many signals will need to be sent ----
     #bar_limit = floor(char_limit/5)
@@ -912,10 +953,15 @@ server <- function(input, output) {
   
   output$download_script_player <- downloadHandler(
     filename = function() {
-      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").xlsx", sep = "")
+      paste0(midi$songTitlePlayer, " (Note delay = ", midi$note_timing, ").csv")
     },
     content = function(file) {
-      saveWorkbook(midi$sheet_store, file = file, overwrite = TRUE)
+      write.csv(midi$sheet_store,
+                  file,
+                  quote = TRUE,
+                  row.names = FALSE,
+                  col.names = FALSE,
+                sep = "")
     }
     )
 }
