@@ -5,7 +5,7 @@ account: lex-parsimoniaea
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 12281667
-bundleId: 9998129
+bundleId: 9998234
 url: https://lex-parsimoniaea.shinyapps.io/Goonstation_Instrument_Player/
 version: 1
 asMultiple: FALSE

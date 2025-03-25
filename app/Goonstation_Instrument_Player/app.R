@@ -44,7 +44,7 @@ intro_tab <- tabItem(
       tags$img(src="img/instruments.png", width="315", style="display: block; margin-left: auto; margin-right: auto;"),
       tags$br(),
       #imageOutput("instruments_pic"),
-      tags$p("This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments (1st tab), or to code that can be used with the player pianos (2nd tab). This app was designed with the Goonstation branch of SS13 in mind, 
+      tags$p("This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments (1st tab), or to code that can be used with the player pianos or text-to-music components (2nd tab). This app was designed with the Goonstation branch of SS13 in mind, 
              but should theoretically be compatible with any virtual instrument that allows one to customize keypresses. To run the generated Python scripts (for the keyboard instruments only), you will need a local installation of ", a(href = 'https://www.python.org/downloads/', 'Python', .noWS = "outside"), " and the ", a(href = 'https://pypi.org/project/pynput/', 'pynput', .noWS = "outside"),  " module.
              With a local installation of Python, these can be installed by opening the terminal and executing the following command:"),
       tags$br(),
@@ -127,11 +127,11 @@ convert_tab_player <- tabItem(
         multiple = FALSE,
         accept = c(".mid", ".midi")),
       numericInput("lcd",
-                   "Fastest MIDI delay to use (optional, measured in ticks)",
+                   "Fastest MIDI notes to use (optional, measured in ticks: 60 = 32nd notes, 120 = 16th notes, 240 = 8th notes, etc.)",
                    value = NA,
                    min = 0),
       bsTooltip("lcd",
-                "The program will attempt to auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if it ends up sounding wonky, you might need to manually change this. From my testing, 60, 80 and 120 seem to work OK for most songs.",
+                "The program will attempt to auto-detect the lowest common denominator in the delays between notes that is divisible by 10 (i.e., excluding glissandos). Usually works, but if it ends up sounding wonky, you might need to manually change this. From my testing, 60 (32nd notes), 120 (16th notes), 240 (8th notes) and 480 (4th notes) will work for most songs.",
                 placement = "left",
                 trigger = "hover"),
       actionButton(
