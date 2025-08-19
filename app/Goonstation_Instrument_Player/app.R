@@ -422,9 +422,14 @@ server <- function(input, output) {
         rename("octave" = Octave) %>% 
         mutate(octave = octave + 1) %>% 
         mutate(note = str_replace(note, "\\.", "#"),
-               octave = ifelse(octave < 3, 3,
-                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
-        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
+               octave = case_when(octave < 3 & note %in% c("G", "G#", "A", "A#", "B") ~ 3,
+                                  octave <= 3 & note %nin% c("G", "G#", "A", "A#", "B") ~ 4,
+                                  octave > 5 & note != "C" ~ 5,
+                                  octave > 5 & note == "C" ~ 6,
+                                  .default = octave),
+               #octave = ifelse(octave < 3, 3,
+               #                ifelse(octave > 5 & note != "C", 5, octave))) %>% 
+        #mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
                new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
@@ -439,9 +444,12 @@ server <- function(input, output) {
                -Octave) %>% 
         rename("octave" = Octave) %>% 
         mutate(octave = octave + 1) %>% 
-        mutate(note = str_replace(note, "\\.", "#"),
-               octave = ifelse(octave < 3, 3,
-                               ifelse(octave > 6, 6, octave))) %>% 
+        mutate(note = str_replace(note, "\\.", "#")) %>% 
+        mutate(octave = case_when(octave < 3 & note %in% c("A", "A#", "B") ~ 3,
+                           octave <= 3 & note %nin% c("A", "A#", "B") ~ 4,
+                           octave > 5 & note != "G" ~ 5,
+                           octave > 5 & note == "G" ~ 6,
+                           .default = octave)) %>% 
         mutate(new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
@@ -456,11 +464,13 @@ server <- function(input, output) {
                -Octave) %>% 
         rename("octave" = Octave) %>% 
         mutate(octave = octave + 1) %>% 
-        mutate(note = str_replace(note, "\\.", "#"),
-               octave = ifelse(octave < 3, 3,
-                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
-        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
-               new_note = paste0(note, octave)) %>%
+        mutate(note = str_replace(note, "\\.", "#")) %>% 
+        mutate(octave = case_when(octave < 4 & note %in% c("E", "F", "F#", "G", "G#", "A", "A#", "B") ~ 3,
+                                  octave <= 3 & note %nin% c("E", "F", "F#", "G", "G#", "A", "A#", "B") ~ 4,
+                                  octave > 5 & note != "C" ~ 5,
+                                  octave > 5 & note == "C" ~ 6,
+                                  .default = octave)) %>% 
+        mutate(new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     } else if (input$instrument == "Trumpet (E3 - C6)") { # Trumpet
@@ -474,11 +484,13 @@ server <- function(input, output) {
                -Octave) %>% 
         rename("octave" = Octave) %>% 
         mutate(octave = octave + 1) %>% 
-        mutate(note = str_replace(note, "\\.", "#"),
-               octave = ifelse(octave < 3, 3,
-                               ifelse(octave > 5 & note != "C", 5, octave))) %>% 
-        mutate(octave = ifelse(octave > 5 & note == "C", 6, octave),
-               new_note = paste0(note, octave)) %>%
+        mutate(note = str_replace(note, "\\.", "#")) %>% 
+        mutate(octave = case_when(octave < 4 & note %in% c("E", "F", "F#", "G", "G#", "A", "A#", "B") ~ 3,
+                                  octave <= 3 & note %nin% c("E", "F", "F#", "G", "G#", "A", "A#", "B") ~ 4,
+                                  octave > 5 & note != "C" ~ 5,
+                                  octave > 5 & note == "C" ~ 6,
+                                  .default = octave)) %>% 
+        mutate(new_note = paste0(note, octave)) %>% 
         left_join(keybinds) %>% 
         mutate(number = as.numeric(number))
     } else if (input$instrument == "Electric Guitar (E2 - C6)") { # Electric Guitar
