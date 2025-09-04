@@ -888,9 +888,11 @@ server <- function(input, output) {
       summarize(notestring = paste0(formatted, collapse = "")) %>% 
       rowwise() %>% 
       mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
+      mutate(notestring = str_replace_all(notestring, "NA", "0")) %>% 
       ungroup() %>% 
       rename("Component" = cut,
-             "Notestring" = notestring)
+             "Notestring" = notestring) %>% 
+      mutate(Notestring = substr(Notestring, 1, nchar(Notestring) - 1))
     
     midi$sheet_store = all_strings
     
