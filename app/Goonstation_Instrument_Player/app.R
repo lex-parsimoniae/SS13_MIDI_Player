@@ -725,6 +725,22 @@ server <- function(input, output) {
     
     midi$test_midi = readMidi(input$midi_upload_player$datapath)
     
+    ## Get the list of tracks and assign instruments ----
+    midi$instruments = midi$test_midi %>% 
+      select(event, parameterMetaSystem, track) %>% 
+      filter(grepl("Sequence", event)) %>% 
+      distinct() %>% 
+      select(-event) %>% 
+      mutate(instrument = parameterMetaSystem) %>% 
+      #mutate(instrument = case_when(grepl("viol", parameterMetaSystem, ignore.case = TRUE) | grepl("voice", parameterMetaSystem, ignore.case = TRUE) | grepl("soprano", parameterMetaSystem, ignore.case = TRUE) | grepl("banjo", parameterMetaSystem, ignore.case = TRUE) | grepl("ukulele", parameterMetaSystem, ignore.case = TRUE) | grepl("trumpet", parameterMetaSystem) ~ "banjo",
+      #                              grepl("guitar", parameterMetaSystem, ignore.case = TRUE) ~ "guitar",
+      #                              grepl("bass", parameterMetaSystem, ignore.case = TRUE) ~ "bass",
+      #                              grepl("piano", parameterMetaSystem, ignore.case = TRUE) ~ "piano")) %>% 
+      group_by(instrument) 
+    
+    midi$test_midi = midi$test_midi %>% 
+      left_join(midi$instruments)
+    
     message("Read midi for conversion to player piano")
   })
   
@@ -834,7 +850,12 @@ server <- function(input, output) {
       left_join(midi_key_player) %>% 
       mutate(time_adj = time/lcd) %>% 
       mutate(remainder = time_adj %% 1) %>% 
+      #mutate(original_remainder = time %% 2) %>% 
+      #filter(original_remainder == 0) %>% 
       filter(remainder == 0) %>% 
+      #mutate(new_remainder = time_adj %% 2) %>% # TESTING
+      #filter(new_remainder == 0) %>% # TESTING
+      #mutate(time_adj = time_adj / 2) %>% 
       group_by(time_adj) %>% 
       mutate(piano = 1:n()) %>% 
       ungroup() %>% 
@@ -852,16 +873,41 @@ server <- function(input, output) {
     
     #char_limit = 15360 - 10
     
-    note_limit = 1918
+    note_limit = 1900
     
     all_notes = test_midi_processed %>% 
       select(time_adj,
-             new_note) %>% 
-      mutate(new_note = ifelse(is.na(new_note), "R1", new_note))
+             new_note,
+             track,
+             instrument) %>% 
+      mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
+      arrange(track, time_adj) %>% 
+      ungroup() %>% 
+      mutate(delay = NA)
+    
+    all_unique_notes = expand_grid(unique(test_midi_processed$time_adj),
+                                   unique(test_midi_processed$track)) %>% 
+      `colnames<-` (c("time_adj", "track")) %>% 
+      arrange(time_adj,
+              track) %>% 
+      left_join(midi$instruments) %>% 
+      left_join(all_notes %>% 
+                  select(-instrument)) %>% 
+      ungroup() %>% 
+      mutate(new_note = ifelse(is.na(new_note), "R1", new_note)) %>% 
+      arrange(track, instrument, time_adj)
+    
+    all_notes = all_unique_notes
     
     ## Create delays ----
     for (i in 1:nrow(all_notes)) {
-      all_notes$delay[i] = all_notes$time_adj[i+1] - all_notes$time_adj[i]
+      if (i == nrow(all_notes)) {
+        all_notes$delay[i] = 0
+      } else if (all_notes$track[i] == all_notes$track[i+1]) {
+        all_notes$delay[i] = all_notes$time_adj[i+1] - all_notes$time_adj[i]
+      } else {
+        all_notes$delay[i] = 0
+      }
     }
     
     ## Format strings ----
@@ -875,24 +921,52 @@ server <- function(input, output) {
              octave = ifelse(notename == "R", "R", octave)) %>% 
       mutate(formatted = paste0(notename, ",", accidentals, ",", dynamic, ",", octave, ",", delay, "|")) %>% 
       ungroup() %>% 
+      group_by(track, instrument) %>% 
       mutate(time_adj = time_adj + 1,
-             row_number = 1:n()) %>% 
-      rowwise() %>% 
-      mutate(cut = ceiling(row_number/note_limit)) %>% 
+             row_number = 1:n(),
+             chars = row_number*10,
+             cut = ceiling(row_number/note_limit)) %>% 
       ungroup() %>% 
-      arrange(time_adj)
+      arrange(track, instrument, cut, time_adj)
+    
+    ### Find the times at which the character limit cuts the string ----
+    cut_times = all_notes %>% 
+      group_by(track, instrument, cut) %>% 
+      summarize(cut_time = max(time_adj)) %>% 
+      group_by(track, instrument) 
+    
+    min_times = cut_times %>% 
+      group_by(cut) %>% 
+      summarize(min_time = min(cut_time)) %>% 
+      ungroup()
+    
+    all_times = as_tibble(unique(all_notes$time_adj)) %>% 
+      rename("min_time" = value) %>% 
+      mutate(cut = NA) %>% 
+      rbind(min_times) %>% 
+      arrange(min_time) %>% 
+      fill(cut, .direction = "up") %>% 
+      distinct() %>% 
+      rename("time_adj" = min_time,
+             "new_cut" = cut)
+    
+    
+    all_notes = all_notes %>% 
+      left_join(all_times)
     
     ### For each piano, generate a single string of inputs ----
     all_strings = all_notes %>%
-      group_by(cut) %>% 
+      group_by(track, instrument, new_cut) %>% 
       summarize(notestring = paste0(formatted, collapse = "")) %>% 
       rowwise() %>% 
       mutate(notestring = paste0("timing,", note_timing, "|", notestring)) %>% 
-      mutate(notestring = str_replace_all(notestring, "NA", "0")) %>% 
       ungroup() %>% 
-      rename("Component" = cut,
+      rename("Track" = track,
+             "Instrument" = instrument,
+             "Component number" = new_cut,
              "Notestring" = notestring) %>% 
-      mutate(Notestring = substr(Notestring, 1, nchar(Notestring) - 1))
+      mutate(Instrument = str_to_title(Instrument)) %>% 
+      mutate(Notestring = str_sub(Notestring, end = -2))
     
     midi$sheet_store = all_strings
     
