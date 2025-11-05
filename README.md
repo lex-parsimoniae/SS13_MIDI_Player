@@ -4,7 +4,7 @@
   <img width="266" height="233" src="https://github.com/lex-parsimoniae/SS13_MIDI_Player/blob/main/app/Goonstation_Instrument_Player/www/img/instruments.png">
 </p>
 
-This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments, or to code that can be used with the Player Pianos. This app was designed with the Goonstation branch of SS13 in mind, but should theoretically be compatible with any virtual instrument that allows one to customize keypresses.
+This R Shiny web application takes as input uploaded MIDI files and outputs Python scripts that simulate keypresses on virtual instruments, or to code that can be used with the Player Pianos or MechComp Text2Music Components. This app was designed with the Goonstation branch of SS13 in mind, but should theoretically be compatible with any virtual instrument that allows one to customize keypresses.
 
 To run the generated keypress scripts, you will need a local installation of [Python](https://www.python.org/downloads/) and the 'pynput' module. Once you've installed Python, 'pynput' can be installed by opening the terminal (e.g., Windows Powershell, NOT a Python or cmd window) and executing the following command:
 ```
